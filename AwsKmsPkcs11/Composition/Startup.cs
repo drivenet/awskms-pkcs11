@@ -42,6 +42,7 @@ namespace AwsKmsPkcs11.Composition
             app.UseEndpoints(routes =>
             {
                 routes.MapGet("/version", VersionHandler.Invoke);
+                routes.MapPost("/keys", app.ApplicationServices.GetRequiredService<KeysHandler>().Invoke);
             });
         }
 
@@ -52,6 +53,8 @@ namespace AwsKmsPkcs11.Composition
 
         private void ConfigureApplication(IServiceCollection services)
         {
+            services.AddSingleton<KeysHandler>();
+
             services.AddHostedService<PreheatingService>();
         }
     }
