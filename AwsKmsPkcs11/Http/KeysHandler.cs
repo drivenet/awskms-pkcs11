@@ -55,6 +55,7 @@ namespace AwsKmsPkcs11.Http
             {
                 response.StatusCode = StatusCodes.Status401Unauthorized;
                 _logger.LogError(EventIds.InvalidRequest, "Computed request signature does not match provided \"{Signature}\".", request.Signature);
+                return;
             }
 
             var result = _requestProcessor.ProcessRequest(request.Request);
