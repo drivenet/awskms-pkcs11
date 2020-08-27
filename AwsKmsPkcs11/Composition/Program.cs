@@ -85,8 +85,8 @@ namespace AwsKmsPkcs11.Composition
         private static void ConfigureKestrel(KestrelServerOptions options, HostingOptions hostingOptions)
         {
             options.AddServerHeader = false;
-            options.Limits.MaxRequestBodySize = 1 << 20;
-            options.Limits.MaxRequestHeadersTotalSize = 8192;
+            options.Limits.MaxRequestBodySize = 4096;
+            options.Limits.MaxRequestHeadersTotalSize = 4096;
 
             var maxConcurrentConnections = hostingOptions.MaxConcurrentConnections;
             if (maxConcurrentConnections != 0)
