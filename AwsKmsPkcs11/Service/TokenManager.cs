@@ -92,12 +92,12 @@ namespace AwsKmsPkcs11.Service
             var key = session.FindAllObjects(query).SingleOrDefault();
             if (key is null)
             {
-                _logger.LogError(EventIds.NoMatchingKey, "No public key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
+                _logger.LogWarning(EventIds.NoMatchingKey, "No public key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
                 return null;
             }
 
             using var mechanism = session.Factories.MechanismFactory.Create(CKM.CKM_RSA_PKCS);
-            _logger.LogWarning(EventIds.Encrypt, "Encrypting with mechanism type {Mechanism} using key with id {KeyId} on token with serial number \"{SerialNumber}\".", mechanism.Type, keyId, slot.GetTokenInfo().SerialNumber);
+            _logger.LogInformation(EventIds.Encrypt, "Encrypting with mechanism type {Mechanism} using key with id {KeyId} on token with serial number \"{SerialNumber}\".", mechanism.Type, keyId, slot.GetTokenInfo().SerialNumber);
             return session.Encrypt(mechanism, key, plaintext);
         }
 
@@ -131,7 +131,7 @@ namespace AwsKmsPkcs11.Service
                 }
 
                 using var mechanism = session.Factories.MechanismFactory.Create(CKM.CKM_RSA_PKCS);
-                _logger.LogWarning(EventIds.Decrypt, "Decrypting with mechanism type {Mechanism} using key with id {KeyId} on token with serial number \"{SerialNumber}\".", mechanism.Type, keyId, slot.GetTokenInfo().SerialNumber);
+                _logger.LogInformation(EventIds.Decrypt, "Decrypting with mechanism type {Mechanism} using key with id {KeyId} on token with serial number \"{SerialNumber}\".", mechanism.Type, keyId, slot.GetTokenInfo().SerialNumber);
                 return session.Decrypt(mechanism, key, ciphertext);
             }
             finally
