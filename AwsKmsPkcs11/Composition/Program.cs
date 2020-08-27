@@ -122,7 +122,7 @@ namespace AwsKmsPkcs11.Composition
 
         private static IConfigurationBuilder ConfigureAppConfiguration(string[] args, HostBuilderContext builderContext, IConfigurationBuilder configBuilder)
             => configBuilder
-                .AddJsonFile(builderContext.Configuration.GetValue("ConfigPath", "appsettings.json"), optional: true, reloadOnChange: true)
+                .AddJsonFile(builderContext.Configuration.GetValue("ConfigPath", "appsettings.json"), optional: false, reloadOnChange: true)
                 .AddCommandLine(args);
     }
 }
