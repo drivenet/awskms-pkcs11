@@ -1,6 +1,7 @@
 ﻿using System;
 
 using AwsKmsPkcs11.Http;
+using AwsKmsPkcs11.Service;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -54,6 +55,10 @@ namespace AwsKmsPkcs11.Composition
         private void ConfigureApplication(IServiceCollection services)
         {
             services.AddSingleton<KeysHandler>();
+            services.AddSingleton<RequestParser>();
+            services.AddSingleton<SignatureVerifier>();
+            services.AddSingleton<RequestProcessor>();
+            services.AddSingleton<KeyManager>();
 
             services.AddHostedService<PreheatingService>();
         }
