@@ -44,7 +44,7 @@ namespace AwsKmsPkcs11.Service
                                 continue;
                             }
 
-                            newDescriptions.Add(key, new KeyDescription(serial, value.Id));
+                            newDescriptions.Add(key, new KeyDescription(serial, value.Pin, value.Id));
                         }
 
                         keyDescriptions = newDescriptions;

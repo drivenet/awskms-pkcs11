@@ -15,13 +15,11 @@ namespace AwsKmsPkcs11.Service
         private static readonly Pkcs11InteropFactories Factories = new Pkcs11InteropFactories();
 
         private readonly object _lock = new object();
-        private readonly IOptionsMonitor<TokenOptions> _options;
         private readonly ILogger _logger;
         private IPkcs11Library? _library;
 
-        public TokenManager(IOptionsMonitor<TokenOptions> options, ILogger<TokenManager> logger)
+        public TokenManager(ILogger<TokenManager> logger)
         {
-            _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -77,7 +75,7 @@ namespace AwsKmsPkcs11.Service
                 return null;
             }
 
-            return Decrypt(key.KeyId, slot, ciphertext);
+            return Decrypt(key.KeyId, key.TokenPin, slot, ciphertext);
         }
 
         private byte[]? Encrypt(byte keyId, ISlot slot, byte[] plaintext)
@@ -103,9 +101,8 @@ namespace AwsKmsPkcs11.Service
             return session.Encrypt(mechanism, key, plaintext);
         }
 
-        private byte[]? Decrypt(byte keyId, ISlot slot, byte[] ciphertext)
+        private byte[]? Decrypt(byte keyId, string pin, ISlot slot, byte[] ciphertext)
         {
-            var pin = _options.CurrentValue.TokenPin;
             using var session = slot.OpenSession(SessionType.ReadOnly);
             try
             {
