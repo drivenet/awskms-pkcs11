@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Hosting;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 
 using Tmds.Systemd;
 
@@ -15,86 +17,112 @@ namespace AwsKmsPkcs11.Composition
     {
         public static async Task Main(string[] args)
         {
-            var commandLineOptions = GetCommandLineOptions(args);
-            var appConfiguration = LoadAppConfiguration(commandLineOptions.Config);
-            var hostingConfigPath = commandLineOptions.HostingConfig;
-            do
-            {
-                await RunHost(appConfiguration, hostingConfigPath);
-            }
-            while (ServiceManager.IsRunningAsService);
-        }
-
-        private static async Task RunHost(IConfiguration appConfiguration, string hostingConfigPath)
-        {
-            var hostingOptions = GetHostingOptions(hostingConfigPath);
-            using var host = BuildHost(hostingOptions, appConfiguration);
+            using var host = BuildHost(args);
             await host.RunAsync();
         }
 
-        private static IConfiguration LoadAppConfiguration(string configPath)
-            => new ConfigurationBuilder()
-                .AddJsonFile(configPath, optional: false, reloadOnChange: true)
-                .Build();
-
-        private static CommandLineOptions GetCommandLineOptions(string[] args)
-            => new ConfigurationBuilder()
-                .AddCommandLine(args)
-                .Build()
-                .Get<CommandLineOptions>() ?? new CommandLineOptions();
-
-        private static HostingOptions GetHostingOptions(string configPath)
-            => new ConfigurationBuilder()
-                .AddJsonFile(configPath, optional: false)
-                .Build()
-                .Get<HostingOptions>() ?? new HostingOptions();
-
-        private static IHost BuildHost(HostingOptions hostingOptions, IConfiguration appConfiguration)
+        private static IHost BuildHost(string[] args)
             => new HostBuilder()
-                .ConfigureWebHost(webHost => webHost
-                    .UseUrls(hostingOptions.Listen)
-                    .UseKestrel(options => ConfigureKestrel(options, hostingOptions))
-                    .UseLibuv()
-                    .UseStartup<Startup>())
-                .ConfigureLogging(loggingBuilder => ConfigureLogging(loggingBuilder, hostingOptions))
+                .ConfigureHostConfiguration(configBuilder => configBuilder.AddCommandLine(args))
+                .ConfigureWebHost(webHost => ConfigureWebHost(webHost))
+                .ConfigureLogging((builderContext, loggingBuilder) => ConfigureLogging(builderContext, loggingBuilder))
+#if !MINIMAL_BUILD
                 .UseSystemd()
-                .ConfigureAppConfiguration(configBuilder => configBuilder.AddConfiguration(appConfiguration))
+#endif
+                .ConfigureAppConfiguration((builderContext, configBuilder) => ConfigureAppConfiguration(args, builderContext, configBuilder))
                 .Build();
 
-        private static void ConfigureLogging(ILoggingBuilder loggingBuilder, HostingOptions hostingOptions)
+        private static IWebHostBuilder ConfigureWebHost(IWebHostBuilder webHost)
+            => webHost
+                .UseKestrel((builderContext, options) => ConfigureKestrel(builderContext, options))
+#if !MINIMAL_BUILD
+                .UseLibuv()
+#endif
+                .UseStartup<Startup>();
+
+#pragma warning disable CA1801 // Review unused parameters -- requred for other build configuration
+        private static void ConfigureLogging(HostBuilderContext builderContext, ILoggingBuilder loggingBuilder)
+#pragma warning restore CA1801 // Review unused parameters
         {
             loggingBuilder.AddFilter(
                 (category, level) => level >= LogLevel.Warning
                     || (level >= LogLevel.Information && !category.StartsWith("Microsoft.AspNetCore.", StringComparison.OrdinalIgnoreCase)));
-            var hasJournalD = Journal.IsSupported;
-            if (hasJournalD)
+
+#if !MINIMAL_BUILD
+            if (Journal.IsSupported)
             {
                 loggingBuilder.AddJournal(options =>
                 {
-                    options.SyslogIdentifier = "awskms-pkcs11";
+                    options.SyslogIdentifier = builderContext.HostingEnvironment.ApplicationName;
                     options.DropWhenBusy = true;
                 });
             }
+#endif
 
-            if (!hasJournalD || hostingOptions.ForceConsoleLogging)
+#if !MINIMAL_BUILD
+            if (builderContext.Configuration.GetValue<bool>("ForceConsoleLogging")
+                 || !Journal.IsAvailable)
+#endif
             {
-                loggingBuilder.AddConsole(options => options.DisableColors = true);
+                loggingBuilder.AddConsole(options =>
+                {
+                    options.IncludeScopes = true;
+                    options.Format = ConsoleLoggerFormat.Systemd;
+                    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffffffzzz \""
+                        + Environment.MachineName
+                        + "\" \""
+                        + builderContext.HostingEnvironment.ApplicationName
+                        + ":\" ";
+                });
             }
         }
 
-        private static void ConfigureKestrel(KestrelServerOptions options, HostingOptions hostingOptions)
+        private static void ConfigureKestrel(WebHostBuilderContext builderContext, KestrelServerOptions options)
         {
             options.AddServerHeader = false;
+            options.Limits.MaxRequestLineSize = 1024;
             options.Limits.MaxRequestBodySize = 4096;
             options.Limits.MaxRequestHeadersTotalSize = 4096;
 
-            var maxConcurrentConnections = hostingOptions.MaxConcurrentConnections;
-            if (maxConcurrentConnections != 0)
+            var kestrelSection = builderContext.Configuration.GetSection("Kestrel");
+            options.Configure(kestrelSection);
+
+            if (kestrelSection.Get<KestrelServerOptions>() is { } kestrelOptions)
             {
-                options.Limits.MaxConcurrentConnections = maxConcurrentConnections;
+                options.Limits.MaxConcurrentConnections = kestrelOptions.Limits.MaxConcurrentConnections;
+            }
+            else
+            {
+                options.Limits.MaxConcurrentConnections = 10;
             }
 
-            options.UseSystemd();
+#if !MINIMAL_BUILD
+            // SD_LISTEN_FDS_START https://www.freedesktop.org/software/systemd/man/sd_listen_fds.html
+            const int SdListenFdsStart = 3;
+            const string ListenFdsEnvVar = "LISTEN_FDS";
+
+            options.UseSystemd(listenOptions =>
+            {
+                if (listenOptions.FileHandle == SdListenFdsStart)
+                {
+                    // This matches sd_listen_fds behavior that requires %LISTEN_FDS% to be present and in range [1;INT_MAX-SD_LISTEN_FDS_START]
+                    if (int.TryParse(Environment.GetEnvironmentVariable(ListenFdsEnvVar), NumberStyles.None, NumberFormatInfo.InvariantInfo, out var listenFds)
+                        && listenFds > 1
+                        && listenFds <= int.MaxValue - SdListenFdsStart)
+                    {
+                        for (var handle = SdListenFdsStart + 1; handle < SdListenFdsStart + listenFds; ++handle)
+                        {
+                            options.ListenHandle((ulong)handle);
+                        }
+                    }
+                }
+            });
+#endif
         }
+
+        private static IConfigurationBuilder ConfigureAppConfiguration(string[] args, HostBuilderContext builderContext, IConfigurationBuilder configBuilder)
+            => configBuilder
+                .AddJsonFile(builderContext.Configuration.GetValue("ConfigPath", "appsettings.json"), optional: true, reloadOnChange: true)
+                .AddCommandLine(args);
     }
 }
