@@ -1,5 +1,8 @@
 ﻿using System;
 
+using Amazon;
+using Amazon.Runtime;
+
 using AwsKmsPkcs11.Http;
 using AwsKmsPkcs11.Service;
 
@@ -54,6 +57,8 @@ namespace AwsKmsPkcs11.Composition
 
         private void ConfigureApplication(IServiceCollection services)
         {
+            services.Configure<SignatureOptions>(_configuration);
+
             services.AddSingleton<KeysHandler>();
             services.AddSingleton<RequestParser>();
             services.AddSingleton<SignatureVerifier>();

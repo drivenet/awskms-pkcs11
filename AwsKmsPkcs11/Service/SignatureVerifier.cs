@@ -1,22 +1,34 @@
 ﻿using System;
 using System.Text;
 
-using Amazon.Runtime;
 using Amazon.Runtime.Internal.Auth;
 using Amazon.Util;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 
 namespace AwsKmsPkcs11.Service
 {
     public sealed class SignatureVerifier
     {
-        private readonly ImmutableCredentials _credentials = new ImmutableCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", null);
-        private readonly string _region = "us-east-1";
+        private readonly IOptionsMonitor<SignatureOptions> _signatureOptions;
+
+        public SignatureVerifier(IOptionsMonitor<SignatureOptions> signatureOptions)
+        {
+            _signatureOptions = signatureOptions ?? throw new ArgumentNullException(nameof(signatureOptions));
+        }
 
         public bool IsSignatureValid(SignedRequest request)
         {
-            var computedSignature = ComputeSignature(request.Path, request.Headers, request.SignedHeaders, request.SignedAt, request.Request.Content);
+            var options = _signatureOptions.CurrentValue;
+            if (!(options.Credentials is { } credentials))
+            {
+                return false;
+            }
+
+            var canonicalRequest = CreateCanonicalRequest(request.Path, request.Headers, request.SignedHeaders, request.Request.Content);
+            const string ServiceName = "kms";
+            var computedSignature = AWS4Signer.ComputeSignature(credentials, options.Region, request.SignedAt, ServiceName, request.SignedHeaders, canonicalRequest).Signature;
             return request.Signature == computedSignature;
         }
 
@@ -58,13 +70,6 @@ namespace AwsKmsPkcs11.Service
             builder.Append('\n');
             builder.Append(AWSSDKUtils.ToHex(AWS4Signer.ComputeHash(content), true));
             return builder.ToString();
-        }
-
-        private string ComputeSignature(string url, IHeaderDictionary headers, string signedHeaders, DateTime signedAt, string content)
-        {
-            var canonicalRequest = CreateCanonicalRequest(url, headers, signedHeaders, content);
-            const string ServiceName = "kms";
-            return AWS4Signer.ComputeSignature(_credentials, _region, signedAt, ServiceName, signedHeaders, canonicalRequest).Signature;
         }
     }
 }
