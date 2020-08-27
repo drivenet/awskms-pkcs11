@@ -59,6 +59,7 @@ namespace AwsKmsPkcs11.Composition
         {
             services.Configure<SignatureOptions>(_configuration);
             services.Configure<TokenOptions>(_configuration);
+            services.Configure<KeyOptions>(_configuration);
 
             services.AddSingleton<KeysHandler>();
             services.AddSingleton<RequestParser>();

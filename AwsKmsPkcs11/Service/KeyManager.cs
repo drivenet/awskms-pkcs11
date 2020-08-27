@@ -1,29 +1,26 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
+
+using Microsoft.Extensions.Options;
 
 namespace AwsKmsPkcs11.Service
 {
     public sealed class KeyManager
     {
-        private readonly IReadOnlyDictionary<string, KeyDescription> _keys = new Dictionary<string, KeyDescription>
-        {
-            //validate ascii and shorter than 255
-            ["19ec80b0-dfdd-4d97-8164-c6examplekey"] = new KeyDescription("7837571", 1),
-        };
-
         private readonly TokenManager _tokenManager;
+        private readonly IOptionsMonitor<KeyOptions> _options;
 
-        public KeyManager(TokenManager tokenManager)
+        public KeyManager(TokenManager tokenManager, IOptionsMonitor<KeyOptions> options)
         {
             _tokenManager = tokenManager ?? throw new ArgumentNullException(nameof(tokenManager));
+            _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
-        public bool IsValidKeyId(string keyId) => _keys.ContainsKey(keyId);
+        public bool IsValidKeyId(string keyId) => _options.CurrentValue.KeyDescriptions.ContainsKey(keyId);
 
         public byte[]? Encrypt(string keyId, byte[] plaintext)
         {
-            if (!_keys.TryGetValue(keyId, out var key))
+            if (!_options.CurrentValue.KeyDescriptions.TryGetValue(keyId, out var key))
             {
                 return null;
             }
@@ -58,7 +55,7 @@ namespace AwsKmsPkcs11.Service
             }
 
             var keyId = Encoding.ASCII.GetString(ciphertext, 1, keyIdLength);
-            if (!_keys.TryGetValue(keyId, out var key))
+            if (!_options.CurrentValue.KeyDescriptions.TryGetValue(keyId, out var key))
             {
                 return null;
             }
