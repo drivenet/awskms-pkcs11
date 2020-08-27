@@ -11,16 +11,16 @@ namespace AwsKmsPkcs11.Service
 {
     public sealed class SignatureVerifier
     {
-        private readonly IOptionsMonitor<SignatureOptions> _signatureOptions;
+        private readonly IOptionsMonitor<SignatureOptions> _options;
 
-        public SignatureVerifier(IOptionsMonitor<SignatureOptions> signatureOptions)
+        public SignatureVerifier(IOptionsMonitor<SignatureOptions> options)
         {
-            _signatureOptions = signatureOptions ?? throw new ArgumentNullException(nameof(signatureOptions));
+            _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
         public bool IsSignatureValid(SignedRequest request)
         {
-            var options = _signatureOptions.CurrentValue;
+            var options = _options.CurrentValue;
             if (!(options.Credentials is { } credentials))
             {
                 return false;

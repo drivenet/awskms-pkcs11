@@ -61,8 +61,13 @@ namespace AwsKmsPkcs11.Service
             }
 
             var ciphertextBytes = _keyManager.Encrypt(keyId, plaintextBytes);
+            if (ciphertextBytes is null)
+            {
+                return new InvalidKmsRequest("Invalid encryption for key {KeyId}.", keyId);
+            }
+
             var ciphertext = Convert.ToBase64String(ciphertextBytes);
-            return new KmsResponse("{\"KeyId\":\"" + keyId + "\", \"CiphertextBlob\":\"" + ciphertext + "\"}");
+            return new KmsResponse("{\"CiphertextBlob\":\"" + ciphertext + "\"}");
         }
 
         private ProcessRequestResult Decrypt(string content)
@@ -83,8 +88,14 @@ namespace AwsKmsPkcs11.Service
                 return new InvalidKmsRequest("Invalid CiphertextBlob \"{CiphertextBlob}\" for DecryptKey.", blob);
             }
 
-            var plaintext = _keyManager.Decrypt(ciphertext);
-            return new KmsResponse("{\"Plaintext\":\"" + Convert.ToBase64String(plaintext) + "\"}");
+            var plaintextBytes = _keyManager.Decrypt(ciphertext);
+            if (plaintextBytes is null)
+            {
+                return new InvalidKmsRequest("Invalid decryption.");
+            }
+
+            var plaintext = Convert.ToBase64String(plaintextBytes);
+            return new KmsResponse("{\"Plaintext\":\"" + plaintext + "\"}");
         }
     }
 }
