@@ -48,7 +48,7 @@ namespace AwsKmsPkcs11.Service
             }
         }
 
-        public ImmutableCredentials? Credentials
+        internal ImmutableCredentials? Credentials
         {
             get
             {

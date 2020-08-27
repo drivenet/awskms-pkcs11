@@ -20,7 +20,9 @@ namespace AwsKmsPkcs11.Service
 
         private static readonly Regex SignatureParser = new Regex(Invariant($"^{Regex.Escape(AWS4Signer.AWS4AlgorithmTag)} {Regex.Escape(AWS4Signer.Credential)}=.+?/.+?, {Regex.Escape(AWS4Signer.SignedHeaders)}=(.+?), {Regex.Escape(AWS4Signer.Signature)}=(.+)$"), RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+#pragma warning disable CA1822 // Mark members as static -- future-proofing
         public async Task<ParseRequestResult> ParseRequest(HttpRequest request)
+#pragma warning restore CA1822 // Mark members as static
         {
             var requestEncoding = Encoding.UTF8;
             if (request.ContentType != JsonContentType)
