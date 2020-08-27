@@ -87,12 +87,14 @@ namespace AwsKmsPkcs11.Service
             {
                 session.Factories.ObjectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PUBLIC_KEY),
                 session.Factories.ObjectAttributeFactory.Create(CKA.CKA_ID, new byte[] { keyId }),
+                session.Factories.ObjectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
+                session.Factories.ObjectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
             };
 
             var key = session.FindAllObjects(query).SingleOrDefault();
             if (key is null)
             {
-                _logger.LogWarning(EventIds.NoMatchingKey, "No public key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
+                _logger.LogWarning(EventIds.NoMatchingKey, "No RSA 2048-bit public key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
                 return null;
             }
 
@@ -121,6 +123,7 @@ namespace AwsKmsPkcs11.Service
                 {
                     session.Factories.ObjectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY),
                     session.Factories.ObjectAttributeFactory.Create(CKA.CKA_ID, new byte[] { keyId }),
+                    session.Factories.ObjectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
                 };
 
                 var key = session.FindAllObjects(query).SingleOrDefault();
