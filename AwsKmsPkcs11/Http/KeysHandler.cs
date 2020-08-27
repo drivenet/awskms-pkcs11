@@ -12,6 +12,8 @@ namespace AwsKmsPkcs11.Http
 {
     internal sealed class KeysHandler
     {
+        private const string JsonContentType = "application/x-amz-json-1.1";
+
         private readonly ILogger _logger;
         private readonly RequestParser _requestParser;
         private readonly SignatureVerifier _signatureVerifier;
@@ -41,6 +43,8 @@ namespace AwsKmsPkcs11.Http
 
                 case InvalidRequest invalidRequest:
                     response.StatusCode = invalidRequest.StatusCode;
+                    response.ContentType = JsonContentType;
+                    await response.WriteAsync("{\"Message\": \"Invalid request.\"}");
                     _logger.LogError(EventIds.InvalidRequest, invalidRequest.Message, invalidRequest.Args);
                     break;
 
@@ -54,6 +58,8 @@ namespace AwsKmsPkcs11.Http
             if (!_signatureVerifier.IsSignatureValid(request))
             {
                 response.StatusCode = StatusCodes.Status401Unauthorized;
+                response.ContentType = JsonContentType;
+                await response.WriteAsync("{\"Message\": \"Invalid signature.\"}");
                 _logger.LogError(EventIds.InvalidRequest, "Computed request signature does not match provided \"{Signature}\".", request.Signature);
                 return;
             }
@@ -62,14 +68,21 @@ namespace AwsKmsPkcs11.Http
             switch (result)
             {
                 case KmsResponse kmsResponse:
-                    const string JsonContentType = "application/x-amz-json-1.1";
-                    response.ContentType = JsonContentType;
                     await response.WriteAsync(kmsResponse.Content);
                     break;
 
                 case InvalidKmsRequest invalidRequest:
                     response.StatusCode = StatusCodes.Status400BadRequest;
+                    response.ContentType = JsonContentType;
+                    await response.WriteAsync("{\"Message\": \"Invalid KMS request.\"}");
                     _logger.LogError(EventIds.InvalidKmsRequest, invalidRequest.Message, invalidRequest.Args);
+                    break;
+
+                case KmsFailure kmsFailure:
+                    response.StatusCode = StatusCodes.Status500InternalServerError;
+                    response.ContentType = JsonContentType;
+                    await response.WriteAsync("{\"Message\": \"KMS failure.\"}");
+                    _logger.LogError(EventIds.InvalidKmsRequest, kmsFailure.Message, kmsFailure.Args);
                     break;
 
                 default:
@@ -81,6 +94,7 @@ namespace AwsKmsPkcs11.Http
         {
             public static readonly EventId InvalidRequest = new EventId(1, nameof(InvalidRequest));
             public static readonly EventId InvalidKmsRequest = new EventId(2, nameof(InvalidKmsRequest));
+            public static readonly EventId KmsFailure = new EventId(3, nameof(KmsFailure));
         }
     }
 }

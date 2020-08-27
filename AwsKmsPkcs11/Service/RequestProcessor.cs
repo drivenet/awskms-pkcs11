@@ -63,7 +63,7 @@ namespace AwsKmsPkcs11.Service
             var ciphertextBytes = _keyManager.Encrypt(keyId, plaintextBytes);
             if (ciphertextBytes is null)
             {
-                return new InvalidKmsRequest("Invalid encryption for key {KeyId}.", keyId);
+                return new KmsFailure("Failed to encrypt with {KeyId}.", keyId);
             }
 
             var ciphertext = Convert.ToBase64String(ciphertextBytes);
@@ -91,7 +91,7 @@ namespace AwsKmsPkcs11.Service
             var plaintextBytes = _keyManager.Decrypt(ciphertext);
             if (plaintextBytes is null)
             {
-                return new InvalidKmsRequest("Invalid decryption.");
+                return new KmsFailure("Failed to decrypt.");
             }
 
             var plaintext = Convert.ToBase64String(plaintextBytes);
