@@ -29,6 +29,7 @@ namespace AwsKmsPkcs11.Http
 
         public async Task Invoke(HttpContext httpContext)
         {
+            using var scope = _logger.BeginScope("RemoteHost:{RemoteHost} RemotePort:{RemotePort}", httpContext.Connection.RemoteIpAddress, httpContext.Connection.RemotePort);
             await HandleRequest(httpContext.Request, httpContext.Response);
         }
 
