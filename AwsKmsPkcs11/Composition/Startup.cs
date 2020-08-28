@@ -1,8 +1,5 @@
 ﻿using System;
 
-using Amazon;
-using Amazon.Runtime;
-
 using AwsKmsPkcs11.Http;
 using AwsKmsPkcs11.Service;
 
@@ -66,8 +63,6 @@ namespace AwsKmsPkcs11.Composition
             services.AddSingleton<RequestProcessor>();
             services.AddSingleton<KeyManager>();
             services.AddSingleton<TokenManager>();
-
-            services.AddHostedService<PreheatingService>();
         }
     }
 }

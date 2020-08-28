@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using Net.Pkcs11Interop.Common;
 using Net.Pkcs11Interop.HighLevelAPI;
