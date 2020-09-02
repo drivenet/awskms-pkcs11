@@ -21,7 +21,7 @@ namespace AwsKmsPkcs11.Service
                 _ => new InvalidKmsRequest("Unknown target \"{Target}\".", request.Target),
             };
 
-        private ProcessRequestResult DescribeKey(string content)
+        private static ProcessRequestResult DescribeKey(string content)
         {
             var requestObject = JsonSerializer.Deserialize<DescribeKeyRequest>(content);
             if (!(requestObject.KeyId is { } keyId))
