@@ -16,8 +16,6 @@ namespace AwsKmsPkcs11.Service
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
-        public bool IsValidKeyId(string keyId) => _options.CurrentValue.KeyDescriptions.ContainsKey(keyId);
-
         public byte[]? Encrypt(string keyId, byte[] plaintext)
         {
             if (!_options.CurrentValue.KeyDescriptions.TryGetValue(keyId, out var key))

@@ -29,12 +29,12 @@ namespace AwsKmsPkcs11.Service
                 return new InvalidKmsRequest("Missing KeyId for DescribeKey.");
             }
 
-            if (!_keyManager.IsValidKeyId(requestObject.KeyId))
+            if (!KeyIdValidator.IsKeyValid(keyId))
             {
-                return new InvalidKmsRequest("Unknown key {KeyId} for DescribeKey.", requestObject.KeyId);
+                return new InvalidKmsRequest("Unknown key {KeyId} for DescribeKey.", keyId);
             }
 
-            return new KmsResponse("{\"KeyMetadata\":{\"KeyId\":\"" + requestObject.KeyId + "\"}}");
+            return new KmsResponse("{\"KeyMetadata\":{\"KeyId\":\"" + keyId + "\"}}");
         }
 
         private ProcessRequestResult Encrypt(string content)

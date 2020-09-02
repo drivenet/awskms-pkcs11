@@ -1,12 +1,10 @@
 ﻿using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace AwsKmsPkcs11.Service
 {
     public sealed class KeyOptions
     {
-        private static readonly Regex KeyTemplate = new Regex("^[A-Za-z0-9_.-]{1,255}$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
         private static readonly IReadOnlyDictionary<string, KeyDescription> EmptyKeys = new Dictionary<string, KeyDescription>();
 
         private IReadOnlyDictionary<string, KeyElementOptions>? _keys;
@@ -34,7 +32,7 @@ namespace AwsKmsPkcs11.Service
                         var newDescriptions = new Dictionary<string, KeyDescription>();
                         foreach (var (key, value) in keys)
                         {
-                            if (!KeyTemplate.IsMatch(key))
+                            if (!KeyIdValidator.IsKeyValid(key))
                             {
                                 continue;
                             }
