@@ -16,6 +16,17 @@ namespace AwsKmsPkcs11.Service
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
+        public bool AreAllKeysValid()
+        {
+            var keyDescriptons = _options.CurrentValue.KeyDescriptions;
+            if (keyDescriptons.Count == 0)
+            {
+                return false;
+            }
+
+            return _tokenManager.AreAllKeysValid(keyDescriptons.Values);
+        }
+
         public byte[]? Encrypt(string keyId, byte[] plaintext)
         {
             if (!_options.CurrentValue.KeyDescriptions.TryGetValue(keyId, out var key))

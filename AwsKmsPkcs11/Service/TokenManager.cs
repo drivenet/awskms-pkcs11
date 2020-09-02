@@ -77,15 +77,75 @@ namespace AwsKmsPkcs11.Service
             return Decrypt(key.KeyId, key.TokenPin, slot, ciphertext);
         }
 
+        public bool AreAllKeysValid(IEnumerable<KeyDescription> keys)
+        {
+            foreach (var group in keys.GroupBy(k => (k.TokenSerialNumber, k.TokenPin), k => k.KeyId))
+            {
+                var slot = SelectSlot(group.Key.TokenSerialNumber);
+                if (slot is null)
+                {
+                    return false;
+                }
+
+                var keyIds = group.ToArray();
+                var pin = group.Key.TokenPin;
+                using var session = slot.OpenSession(SessionType.ReadOnly);
+                var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
+                var query = new List<IObjectAttribute>
+                {
+                    objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY),
+                    objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
+                    objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
+                };
+
+                if (!Login(session, pin, slot))
+                {
+                    return false;
+                }
+
+                int count;
+                try
+                {
+                    count = session.FindAllObjects(query).Count;
+                }
+                finally
+                {
+                    session.Logout();
+                }
+
+                if (count != keyIds.Length)
+                {
+                    return false;
+                }
+
+                query = new List<IObjectAttribute>
+                {
+                    objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PUBLIC_KEY),
+                    objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
+                    objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
+                    objectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
+                };
+
+                count = session.FindAllObjects(query).Count;
+                if (count != keyIds.Length)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         private byte[]? Encrypt(byte keyId, ISlot slot, byte[] plaintext)
         {
             using var session = slot.OpenSession(SessionType.ReadOnly);
+            var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
             var query = new List<IObjectAttribute>
             {
-                session.Factories.ObjectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PUBLIC_KEY),
-                session.Factories.ObjectAttributeFactory.Create(CKA.CKA_ID, new byte[] { keyId }),
-                session.Factories.ObjectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
-                session.Factories.ObjectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
+                objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PUBLIC_KEY),
+                objectAttributeFactory.Create(CKA.CKA_ID, new byte[] { keyId }),
+                objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
+                objectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
             };
 
             var key = session.FindAllObjects(query).SingleOrDefault();
@@ -103,23 +163,19 @@ namespace AwsKmsPkcs11.Service
         private byte[]? Decrypt(byte keyId, string pin, ISlot slot, byte[] ciphertext)
         {
             using var session = slot.OpenSession(SessionType.ReadOnly);
-            try
+            if (!Login(session, pin, slot))
             {
-                session.Login(CKU.CKU_USER, pin);
-            }
-            catch (Pkcs11Exception exception) when (exception.RV == CKR.CKR_PIN_INCORRECT)
-            {
-                _logger.LogError(EventIds.InvalidPin, "Invalid PIN for token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
                 return null;
             }
 
             try
             {
+                var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
                 var query = new List<IObjectAttribute>
                 {
-                    session.Factories.ObjectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY),
-                    session.Factories.ObjectAttributeFactory.Create(CKA.CKA_ID, new byte[] { keyId }),
-                    session.Factories.ObjectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
+                    objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY),
+                    objectAttributeFactory.Create(CKA.CKA_ID, new byte[] { keyId }),
+                    objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
                 };
 
                 var key = session.FindAllObjects(query).SingleOrDefault();
@@ -136,6 +192,20 @@ namespace AwsKmsPkcs11.Service
             finally
             {
                 session.Logout();
+            }
+        }
+
+        private bool Login(ISession session, string pin, ISlot slot)
+        {
+            try
+            {
+                session.Login(CKU.CKU_USER, pin);
+                return true;
+            }
+            catch (Pkcs11Exception exception) when (exception.RV == CKR.CKR_PIN_INCORRECT)
+            {
+                _logger.LogError(EventIds.InvalidPin, "Invalid PIN for token with serial number \"{SerialNumber}\".", slot.GetTokenInfo().SerialNumber);
+                return false;
             }
         }
 

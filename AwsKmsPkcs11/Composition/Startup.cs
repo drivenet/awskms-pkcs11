@@ -43,6 +43,7 @@ namespace AwsKmsPkcs11.Composition
             app.UseEndpoints(routes =>
             {
                 routes.MapGet("/version", VersionHandler.Invoke);
+                routes.MapHealthChecks("/healthcheck");
                 routes.MapPost("/keys", app.ApplicationServices.GetRequiredService<KeysHandler>().Invoke);
             });
         }
@@ -50,6 +51,8 @@ namespace AwsKmsPkcs11.Composition
         private static void ConfigureAspNet(IServiceCollection services)
         {
             services.AddRouting();
+            services.AddHealthChecks()
+                .AddCheck<KeysHealthCheck>("keys");
         }
 
         private void ConfigureApplication(IServiceCollection services)
