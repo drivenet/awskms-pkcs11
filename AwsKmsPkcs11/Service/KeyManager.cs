@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AwsKmsPkcs11.Service
@@ -9,11 +10,13 @@ namespace AwsKmsPkcs11.Service
     {
         private readonly TokenManager _tokenManager;
         private readonly IOptionsMonitor<KeyOptions> _options;
+        private readonly ILogger _logger;
 
-        public KeyManager(TokenManager tokenManager, IOptionsMonitor<KeyOptions> options)
+        public KeyManager(TokenManager tokenManager, IOptionsMonitor<KeyOptions> options, ILogger<KeyManager> logger)
         {
             _tokenManager = tokenManager ?? throw new ArgumentNullException(nameof(tokenManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public bool AreAllKeysValid()
@@ -66,12 +69,18 @@ namespace AwsKmsPkcs11.Service
             var keyId = Encoding.ASCII.GetString(ciphertext, 1, keyIdLength);
             if (!_options.CurrentValue.KeyDescriptions.TryGetValue(keyId, out var key))
             {
+                _logger.LogError(EventIds.DecryptionKeyNotFound, "Decryption key with id \"{KeyId}\" was not found.", keyId);
                 return null;
             }
 
             var payload = new byte[payloadLength];
             Buffer.BlockCopy(ciphertext, keyIdLength + 1, payload, 0, payloadLength);
             return _tokenManager.TryDecrypt(key, payload);
+        }
+
+        private static class EventIds
+        {
+            public static readonly EventId DecryptionKeyNotFound = new EventId(1, nameof(DecryptionKeyNotFound));
         }
     }
 }
