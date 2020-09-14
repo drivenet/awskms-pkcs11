@@ -87,50 +87,59 @@ namespace AwsKmsPkcs11.Service
                     return false;
                 }
 
-                var keyIds = group.ToArray();
                 var pin = group.Key.TokenPin;
-                using var session = slot.OpenSession(SessionType.ReadOnly);
-                var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
-                var query = new List<IObjectAttribute>
-                {
-                    objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY),
-                    objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
-                    objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
-                };
-
-                if (!Login(session, pin, slot))
+                if (!AreKeysValid(slot, group.ToArray(), group.Key.TokenPin))
                 {
                     return false;
                 }
+            }
 
-                int count;
-                try
-                {
-                    count = session.FindAllObjects(query).Count;
-                }
-                finally
-                {
-                    session.Logout();
-                }
+            return true;
+        }
 
-                if (count != keyIds.Length)
-                {
-                    return false;
-                }
+        private bool AreKeysValid(ISlot slot, byte[] keyIds, string pin)
+        {
+            using var session = slot.OpenSession(SessionType.ReadOnly);
+            var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
+            var query = new List<IObjectAttribute>
+            {
+                objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY),
+                objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
+                objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
+            };
 
-                query = new List<IObjectAttribute>
-                {
-                    objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PUBLIC_KEY),
-                    objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
-                    objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
-                    objectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
-                };
+            if (!Login(session, pin, slot))
+            {
+                return false;
+            }
 
+            int count;
+            try
+            {
                 count = session.FindAllObjects(query).Count;
-                if (count != keyIds.Length)
-                {
-                    return false;
-                }
+            }
+            finally
+            {
+                session.Logout();
+            }
+
+            if (count != keyIds.Length)
+            {
+                return false;
+            }
+
+            query = new List<IObjectAttribute>
+            {
+                objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PUBLIC_KEY),
+                objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
+                objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
+                objectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
+            };
+
+            count = session.FindAllObjects(query).Count;
+            if (count != keyIds.Length)
+            {
+                return false;
             }
 
             return true;
