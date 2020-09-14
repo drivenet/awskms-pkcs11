@@ -3,7 +3,7 @@
 
   <PropertyGroup>
     <TargetFramework>$(NewApplicationTargetFramework)</TargetFramework>
-    <Version>0.3.10</Version>
+    <Version>0.3.11</Version>
     <Nullable>enable</Nullable>
     <AssemblyName>awskms-pkcs11</AssemblyName>
     <NoWarn>$(NoWarn);CA2007</NoWarn>

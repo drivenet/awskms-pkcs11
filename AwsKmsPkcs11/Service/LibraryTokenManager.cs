@@ -10,9 +10,10 @@ using static System.FormattableString;
 
 namespace AwsKmsPkcs11.Service
 {
-    public sealed partial class LibraryTokenManager : ITokenManager
+    public sealed class LibraryTokenManager : ITokenManager
     {
         private static readonly Pkcs11InteropFactories Factories = new Pkcs11InteropFactories();
+        private static readonly string LibraryPath = Environment.OSVersion.Platform == PlatformID.Win32NT ? "libykcs11-1.dll" : "libykcs11.so";
 
         private readonly ILogger<TokenManager> _innerLogger;
 
@@ -22,46 +23,27 @@ namespace AwsKmsPkcs11.Service
         }
 
         public byte[]? Encrypt(KeyDescription key, byte[] plaintext)
-        {
-            using var tokenManager = GetTokenManager();
-            return tokenManager.Encrypt(key, plaintext);
-        }
+            => Run(inner => inner.Encrypt(key, plaintext));
 
         public byte[]? TryDecrypt(KeyDescription key, byte[] ciphertext)
-        {
-            using var tokenManager = GetTokenManager();
-            return tokenManager.TryDecrypt(key, ciphertext);
-        }
+            => Run(inner => inner.TryDecrypt(key, ciphertext));
 
         public bool AreAllKeysValid(IEnumerable<KeyDescription> keys)
-        {
-            using var tokenManager = GetTokenManager();
-            return tokenManager.AreAllKeysValid(keys);
-        }
+            => Run(inner => inner.AreAllKeysValid(keys));
 
         private static IPkcs11Library LoadLibrary()
         {
-            var libraryPath = Environment.OSVersion.Platform == PlatformID.Win32NT ? "libykcs11-1.dll" : "libykcs11.so";
-            var library = Factories.Pkcs11LibraryFactory.LoadPkcs11Library(Factories, libraryPath, AppType.SingleThreaded);
-            if (library is null)
-            {
-                throw new DllNotFoundException(Invariant($"Failed to load PKCS#11 library \"{libraryPath}\"."));
-            }
-
-            return library;
+            var library = Factories.Pkcs11LibraryFactory.LoadPkcs11Library(Factories, LibraryPath, AppType.SingleThreaded);
+            return library ?? throw new DllNotFoundException(Invariant($"Failed to load PKCS#11 library \"{LibraryPath}\"."));
         }
 
-        private DisposableTokenManager GetTokenManager()
+        private TResult Run<TResult>(Func<ITokenManager, TResult> operation)
         {
-            var library = LoadLibrary();
-            try
+            lock (Factories)
             {
-                return new DisposableTokenManager(new TokenManager(library, _innerLogger), library);
-            }
-            catch
-            {
-                library.Dispose();
-                throw;
+                using var library = LoadLibrary();
+                var tokenManager = new TokenManager(library, _innerLogger);
+                return operation(tokenManager);
             }
         }
     }
