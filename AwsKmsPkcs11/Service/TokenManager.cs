@@ -9,51 +9,16 @@ using Net.Pkcs11Interop.HighLevelAPI;
 
 namespace AwsKmsPkcs11.Service
 {
-    public sealed class TokenManager : IDisposable
+    public sealed class TokenManager : ITokenManager
     {
-        private static readonly Pkcs11InteropFactories Factories = new Pkcs11InteropFactories();
-
-        private readonly object _lock = new object();
+        private readonly IPkcs11Library _library;
         private readonly ILogger _logger;
-        private IPkcs11Library? _library;
 
-        public TokenManager(ILogger<TokenManager> logger)
+        public TokenManager(IPkcs11Library library, ILogger<TokenManager> logger)
         {
+            _library = library ?? throw new ArgumentNullException(nameof(library));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-
-        private IPkcs11Library? Library
-        {
-            get
-            {
-                var library = _library;
-                if (library is null)
-                {
-                    var libraryPath = GetLibraryPath();
-                    lock (_lock)
-                    {
-                        library = _library;
-                        if (library is null)
-                        {
-                            _library = library = Factories.Pkcs11LibraryFactory.LoadPkcs11Library(Factories, libraryPath, AppType.MultiThreaded);
-                            if (library is null)
-                            {
-                                _logger.LogError(EventIds.LibraryLoadFailed, "Failed to load PKCS#11 library \"{LibraryPath}\".", libraryPath);
-                            }
-                        }
-                    }
-                }
-
-                return library;
-
-                static string GetLibraryPath()
-                {
-                    return Environment.OSVersion.Platform == PlatformID.Win32NT ? "libykcs11-1.dll" : "libykcs11.so";
-                }
-            }
-        }
-
-        public void Dispose() => _library?.Dispose();
 
         public byte[]? Encrypt(KeyDescription key, byte[] plaintext)
         {
@@ -220,7 +185,7 @@ namespace AwsKmsPkcs11.Service
 
         private ISlot? SelectSlot(string serialNumber)
         {
-            var slots = Library?.GetSlotList(SlotsType.WithTokenPresent);
+            var slots = _library.GetSlotList(SlotsType.WithTokenPresent);
             if (slots is null)
             {
                 return null;
@@ -241,7 +206,6 @@ namespace AwsKmsPkcs11.Service
 
         private static class EventIds
         {
-            public static readonly EventId LibraryLoadFailed = new EventId(1, nameof(LibraryLoadFailed));
             public static readonly EventId NoMatchingToken = new EventId(2, nameof(NoMatchingToken));
             public static readonly EventId NoMatchingKey = new EventId(3, nameof(NoMatchingKey));
             public static readonly EventId InvalidPin = new EventId(4, nameof(InvalidPin));

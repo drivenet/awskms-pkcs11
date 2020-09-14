@@ -8,11 +8,11 @@ namespace AwsKmsPkcs11.Service
 {
     public sealed class KeyManager
     {
-        private readonly TokenManager _tokenManager;
+        private readonly ITokenManager _tokenManager;
         private readonly IOptionsMonitor<KeyOptions> _options;
         private readonly ILogger _logger;
 
-        public KeyManager(TokenManager tokenManager, IOptionsMonitor<KeyOptions> options, ILogger<KeyManager> logger)
+        public KeyManager(ITokenManager tokenManager, IOptionsMonitor<KeyOptions> options, ILogger<KeyManager> logger)
         {
             _tokenManager = tokenManager ?? throw new ArgumentNullException(nameof(tokenManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));

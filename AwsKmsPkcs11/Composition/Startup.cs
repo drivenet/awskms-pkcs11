@@ -65,7 +65,7 @@ namespace AwsKmsPkcs11.Composition
             services.AddSingleton<SignatureVerifier>();
             services.AddSingleton<RequestProcessor>();
             services.AddSingleton<KeyManager>();
-            services.AddSingleton<TokenManager>();
+            services.AddSingleton<ITokenManager, LibraryTokenManager>();
         }
     }
 }
