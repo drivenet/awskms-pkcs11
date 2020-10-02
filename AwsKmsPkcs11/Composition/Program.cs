@@ -54,7 +54,6 @@ namespace AwsKmsPkcs11.Composition
                 loggingBuilder.AddJournal(options =>
                 {
                     options.SyslogIdentifier = builderContext.HostingEnvironment.ApplicationName;
-                    options.DropWhenBusy = true;
                 });
             }
 #endif
