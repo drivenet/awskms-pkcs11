@@ -2,6 +2,9 @@
 {
     public class KeyElementOptions
     {
+        // Default PIN for YubiKey and some other smart cards
+        private const string DefaultPIN = "123456";
+
         private byte _id;
         private string? _pin;
 
@@ -15,7 +18,7 @@
 
         public string Pin
         {
-            get => _pin ?? "123456";
+            get => _pin ?? DefaultPIN;
             set
             {
                 var pin = value;

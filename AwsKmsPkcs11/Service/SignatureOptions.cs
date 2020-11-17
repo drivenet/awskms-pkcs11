@@ -48,22 +48,17 @@ namespace AwsKmsPkcs11.Service
             }
         }
 
-        internal ImmutableCredentials? Credentials
-        {
-            get
-            {
-                var credentials = _credentials;
-                if (credentials is null)
-                {
-                    if (_accessKey is { } accessKey
-                        && _secretKey is { } secretKey)
-                    {
-                        _credentials = credentials = new ImmutableCredentials(accessKey, secretKey, null);
-                    }
-                }
+        internal ImmutableCredentials? Credentials => _credentials ??= CreateCredentials();
 
-                return credentials;
+        private ImmutableCredentials? CreateCredentials()
+        {
+            if (_accessKey is { } accessKey
+                && _secretKey is { } secretKey)
+            {
+                return new ImmutableCredentials(accessKey, secretKey, null);
             }
+
+            return null;
         }
     }
 }

@@ -54,7 +54,7 @@ namespace AwsKmsPkcs11.Service
         public byte[]? Decrypt(byte[] ciphertext)
         {
             var length = ciphertext.Length;
-            if (length < 3)
+            if (length < 1 /* keyIdLength */ + 1 /* non-empty keyId */ + 1 /* non-empty ciphertext */)
             {
                 return null;
             }

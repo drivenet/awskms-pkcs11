@@ -21,42 +21,32 @@ namespace AwsKmsPkcs11.Service
             }
         }
 
-        internal IReadOnlyDictionary<string, KeyDescription> KeyDescriptions
+        internal IReadOnlyDictionary<string, KeyDescription> KeyDescriptions => _keyDescriptions ??= CreateDescriptions();
+
+        private IReadOnlyDictionary<string, KeyDescription> CreateDescriptions()
         {
-            get
+            if (!(_keys is { } keys))
             {
-                if (!(_keyDescriptions is { } keyDescriptions))
+                return EmptyKeys;
+            }
+
+            var keyDescriptions = new Dictionary<string, KeyDescription>();
+            foreach (var (key, value) in keys)
+            {
+                if (!KeyIdValidator.IsKeyValid(key))
                 {
-                    if (_keys is { } keys)
-                    {
-                        var newDescriptions = new Dictionary<string, KeyDescription>();
-                        foreach (var (key, value) in keys)
-                        {
-                            if (!KeyIdValidator.IsKeyValid(key))
-                            {
-                                continue;
-                            }
-
-                            if (!(value.Serial is { } serial))
-                            {
-                                continue;
-                            }
-
-                            newDescriptions.Add(key, new KeyDescription(serial, value.Pin, value.Id));
-                        }
-
-                        keyDescriptions = newDescriptions;
-                    }
-                    else
-                    {
-                        keyDescriptions = EmptyKeys;
-                    }
-
-                    _keyDescriptions = keyDescriptions;
+                    continue;
                 }
 
-                return keyDescriptions;
+                if (!(value.Serial is { } serial))
+                {
+                    continue;
+                }
+
+                keyDescriptions.Add(key, new KeyDescription(serial, value.Pin, value.Id));
             }
+
+            return keyDescriptions;
         }
     }
 }

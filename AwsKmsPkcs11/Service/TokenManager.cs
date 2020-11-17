@@ -62,9 +62,22 @@ namespace AwsKmsPkcs11.Service
             return true;
         }
 
-        private bool AreKeysValid(ISlot slot, byte[] keyIds, string pin)
+        private static List<IObjectAttribute> QueryPublicKeys(byte[] keyIds, ISession session)
         {
-            using var session = slot.OpenSession(SessionType.ReadOnly);
+            List<IObjectAttribute> query;
+            var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
+            query = new List<IObjectAttribute>
+            {
+                objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PUBLIC_KEY),
+                objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
+                objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
+                objectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
+            };
+            return query;
+        }
+
+        private static List<IObjectAttribute> QueryPrivateKeys(byte[] keyIds, ISession session)
+        {
             var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
             var query = new List<IObjectAttribute>
             {
@@ -72,7 +85,13 @@ namespace AwsKmsPkcs11.Service
                 objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
                 objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
             };
+            return query;
+        }
 
+        private bool AreKeysValid(ISlot slot, byte[] keyIds, string pin)
+        {
+            using var session = slot.OpenSession(SessionType.ReadOnly);
+            var query = QueryPrivateKeys(keyIds, session);
             if (!Login(session, pin, slot))
             {
                 return false;
@@ -93,13 +112,7 @@ namespace AwsKmsPkcs11.Service
                 return false;
             }
 
-            query = new List<IObjectAttribute>
-            {
-                objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PUBLIC_KEY),
-                objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
-                objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
-                objectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
-            };
+            query = QueryPublicKeys(keyIds, session);
 
             count = session.FindAllObjects(query).Count;
             if (count != keyIds.Length)
@@ -113,14 +126,7 @@ namespace AwsKmsPkcs11.Service
         private byte[]? Encrypt(byte keyId, ISlot slot, byte[] plaintext)
         {
             using var session = slot.OpenSession(SessionType.ReadOnly);
-            var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
-            var query = new List<IObjectAttribute>
-            {
-                objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PUBLIC_KEY),
-                objectAttributeFactory.Create(CKA.CKA_ID, new byte[] { keyId }),
-                objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
-                objectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
-            };
+            var query = QueryPublicKeys(new[] { keyId }, session);
 
             var key = session.FindAllObjects(query).SingleOrDefault();
             if (key is null)
@@ -144,14 +150,7 @@ namespace AwsKmsPkcs11.Service
 
             try
             {
-                var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
-                var query = new List<IObjectAttribute>
-                {
-                    objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY),
-                    objectAttributeFactory.Create(CKA.CKA_ID, new byte[] { keyId }),
-                    objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
-                };
-
+                var query = QueryPrivateKeys(new[] { keyId }, session);
                 var key = session.FindAllObjects(query).SingleOrDefault();
                 if (key is null)
                 {
