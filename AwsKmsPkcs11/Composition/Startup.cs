@@ -20,11 +20,6 @@ namespace AwsKmsPkcs11.Composition
 
         public void ConfigureServices(IServiceCollection services)
         {
-            if (services is null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
-
             ConfigureApplication(services);
             ConfigureAspNet(services);
         }
@@ -33,11 +28,6 @@ namespace AwsKmsPkcs11.Composition
         public void Configure(IApplicationBuilder app)
 #pragma warning restore CA1822 // Mark members as static
         {
-            if (app is null)
-            {
-                throw new ArgumentNullException(nameof(app));
-            }
-
             app.UseRouting();
 
             app.UseEndpoints(routes =>
