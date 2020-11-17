@@ -40,9 +40,7 @@ namespace AwsKmsPkcs11.Composition
 #endif
                 .UseStartup<Startup>();
 
-#pragma warning disable CA1801 // Review unused parameters -- requred for other build configuration
         private static void ConfigureLogging(HostBuilderContext builderContext, ILoggingBuilder loggingBuilder)
-#pragma warning restore CA1801 // Review unused parameters
         {
             loggingBuilder.AddFilter(
                 (category, level) => level >= LogLevel.Warning
