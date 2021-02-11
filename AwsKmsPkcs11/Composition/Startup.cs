@@ -42,6 +42,7 @@ namespace AwsKmsPkcs11.Composition
         {
             services.AddRouting();
             services.AddHealthChecks()
+                .AddCheck<SignatureHealthcheck>("signature")
                 .AddCheck<KeysHealthCheck>("keys");
         }
 
