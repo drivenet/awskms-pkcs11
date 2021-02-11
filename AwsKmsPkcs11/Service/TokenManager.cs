@@ -52,7 +52,6 @@ namespace AwsKmsPkcs11.Service
                     return false;
                 }
 
-                var pin = group.Key.TokenPin;
                 if (!AreKeysValid(slot, group.ToArray(), group.Key.TokenPin))
                 {
                     return false;
