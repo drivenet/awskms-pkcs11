@@ -26,15 +26,6 @@ namespace AwsKmsPkcs11.Http
                 "873f801077f296e395d761d40445c324eba5b7254ebf075831421fc03937fea3",
                 new KmsRequest("TrentService.Encrypt", "{\"CiphertextBlob\":\"abcdefgh\"}"));
 
-        private static readonly SignedRequest ValidRequest =
-            new SignedRequest(
-                InvalidRequest.Path,
-                InvalidRequest.Headers,
-                InvalidRequest.SignedHeaders,
-                InvalidRequest.SignedAt,
-                "873f801077f296e395d761d40445c324eba5b7254ebf075831421fc03937fea4",
-                InvalidRequest.Request);
-
         private readonly SignatureVerifier _verifier;
 
         public SignatureHealthcheck(SignatureVerifier verifier)
@@ -47,11 +38,6 @@ namespace AwsKmsPkcs11.Http
             if (_verifier.IsSignatureValid(InvalidRequest))
             {
                 return Task.FromResult(HealthCheckResult.Unhealthy("Invalid signature is considered valid."));
-            }
-
-            if (!_verifier.IsSignatureValid(ValidRequest))
-            {
-                return Task.FromResult(HealthCheckResult.Unhealthy("Valid signature is considered invalid."));
             }
 
             return Task.FromResult(HealthCheckResult.Healthy("Invalid signature is considered invalid."));
