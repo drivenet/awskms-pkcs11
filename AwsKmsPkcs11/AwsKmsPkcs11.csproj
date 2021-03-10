@@ -3,10 +3,9 @@
 
   <PropertyGroup>
     <TargetFramework>$(NewApplicationTargetFramework)</TargetFramework>
-    <Version>0.3.19</Version>
     <Nullable>enable</Nullable>
     <AssemblyName>awskms-pkcs11</AssemblyName>
-    <NoWarn>$(NoWarn);CA2007</NoWarn>
+    <Version>0.3.19</Version>
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
