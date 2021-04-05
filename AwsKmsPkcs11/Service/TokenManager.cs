@@ -52,7 +52,7 @@ namespace AwsKmsPkcs11.Service
                     return false;
                 }
 
-                if (!AreKeysValid(slot, group.ToArray(), group.Key.TokenPin))
+                if (!AreKeysValid(slot, group, group.Key.TokenPin))
                 {
                     return false;
                 }
@@ -61,60 +61,67 @@ namespace AwsKmsPkcs11.Service
             return true;
         }
 
-        private static List<IObjectAttribute> QueryPublicKeys(byte[] keyIds, ISession session)
+        private IObjectHandle? QueryPublicKey(byte keyId, ISession session, ISlot slot)
         {
             List<IObjectAttribute> query;
             var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
             query = new List<IObjectAttribute>
             {
                 objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PUBLIC_KEY),
-                objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
+                objectAttributeFactory.Create(CKA.CKA_ID, new[] { keyId }),
                 objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
                 objectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
             };
-            return query;
+
+            var key = session.FindAllObjects(query).SingleOrDefault();
+            if (key is null)
+            {
+                _logger.LogWarning(EventIds.NoMatchingKey, "No RSA 2048-bit public key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
+            }
+
+            return key;
         }
 
-        private static List<IObjectAttribute> QueryPrivateKeys(byte[] keyIds, ISession session)
+        private IObjectHandle? QueryPrivateKey(byte keyId, ISession session, ISlot slot)
         {
             var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
             var query = new List<IObjectAttribute>
             {
                 objectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY),
-                objectAttributeFactory.Create(CKA.CKA_ID, keyIds),
+                objectAttributeFactory.Create(CKA.CKA_ID, new[] { keyId }),
                 objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
             };
-            return query;
+
+            var key = session.FindAllObjects(query).SingleOrDefault();
+            if (key is null)
+            {
+                _logger.LogError(EventIds.NoMatchingKey, "No RSA private key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
+            }
+
+            return key;
         }
 
-        private bool AreKeysValid(ISlot slot, byte[] keyIds, string pin)
+        private bool AreKeysValid(ISlot slot, IEnumerable<byte> keyIds, string pin)
         {
             using var session = slot.OpenSession(SessionType.ReadOnly);
-            var query = QueryPrivateKeys(keyIds, session);
             if (!Login(session, pin, slot))
             {
                 return false;
             }
 
-            int count;
             try
             {
-                count = session.FindAllObjects(query).Count;
+                if (keyIds.Any(keyId => QueryPrivateKey(keyId, session, slot) is null))
+                {
+                    return false;
+                }
             }
             finally
             {
                 session.Logout();
             }
 
-            if (count != keyIds.Length)
-            {
-                return false;
-            }
-
-            query = QueryPublicKeys(keyIds, session);
-
-            count = session.FindAllObjects(query).Count;
-            if (count != keyIds.Length)
+            if (keyIds.Any(keyId => QueryPublicKey(keyId, session, slot) is null))
             {
                 return false;
             }
@@ -125,12 +132,9 @@ namespace AwsKmsPkcs11.Service
         private byte[]? Encrypt(byte keyId, ISlot slot, byte[] plaintext)
         {
             using var session = slot.OpenSession(SessionType.ReadOnly);
-            var query = QueryPublicKeys(new[] { keyId }, session);
-
-            var key = session.FindAllObjects(query).SingleOrDefault();
+            var key = QueryPublicKey(keyId, session, slot);
             if (key is null)
             {
-                _logger.LogWarning(EventIds.NoMatchingKey, "No RSA 2048-bit public key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
                 return null;
             }
 
@@ -149,11 +153,9 @@ namespace AwsKmsPkcs11.Service
 
             try
             {
-                var query = QueryPrivateKeys(new[] { keyId }, session);
-                var key = session.FindAllObjects(query).SingleOrDefault();
+                var key = QueryPrivateKey(keyId, session, slot);
                 if (key is null)
                 {
-                    _logger.LogError(EventIds.NoMatchingKey, "No private key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
                     return null;
                 }
 
@@ -209,6 +211,7 @@ namespace AwsKmsPkcs11.Service
             public static readonly EventId InvalidPin = new EventId(4, nameof(InvalidPin));
             public static readonly EventId Encrypt = new EventId(5, nameof(Encrypt));
             public static readonly EventId Decrypt = new EventId(6, nameof(Decrypt));
+            public static readonly EventId InvalidKeyStructure = new EventId(7, nameof(InvalidKeyStructure));
         }
     }
 }
