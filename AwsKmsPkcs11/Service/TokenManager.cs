@@ -211,7 +211,6 @@ namespace AwsKmsPkcs11.Service
             public static readonly EventId InvalidPin = new EventId(4, nameof(InvalidPin));
             public static readonly EventId Encrypt = new EventId(5, nameof(Encrypt));
             public static readonly EventId Decrypt = new EventId(6, nameof(Decrypt));
-            public static readonly EventId InvalidKeyStructure = new EventId(7, nameof(InvalidKeyStructure));
         }
     }
 }
