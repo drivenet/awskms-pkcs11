@@ -8,7 +8,7 @@ namespace AwsKmsPkcs11.Service
         {
             StatusCode = statusCode;
             Message = message ?? throw new ArgumentNullException(nameof(message));
-            Args = args ?? throw new ArgumentNullException(nameof(args));
+            Args = args;
         }
 
         public int StatusCode { get; }

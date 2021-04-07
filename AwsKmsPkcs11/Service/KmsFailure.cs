@@ -7,7 +7,7 @@ namespace AwsKmsPkcs11.Service
         public KmsFailure(string message, params string[] args)
         {
             Message = message ?? throw new ArgumentNullException(nameof(message));
-            Args = args ?? throw new ArgumentNullException(nameof(args));
+            Args = args;
         }
 
         public string Message { get; }
