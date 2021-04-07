@@ -25,7 +25,7 @@ namespace AwsKmsPkcs11.Service
 
         private IReadOnlyDictionary<string, KeyDescription> CreateDescriptions()
         {
-            if (!(_keys is { } keys))
+            if (_keys is not { } keys)
             {
                 return EmptyKeys;
             }
@@ -38,7 +38,7 @@ namespace AwsKmsPkcs11.Service
                     continue;
                 }
 
-                if (!(value.Serial is { } serial))
+                if (value.Serial is not { } serial)
                 {
                     continue;
                 }

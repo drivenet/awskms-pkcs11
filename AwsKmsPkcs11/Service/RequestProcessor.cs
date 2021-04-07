@@ -24,7 +24,7 @@ namespace AwsKmsPkcs11.Service
         private static ProcessRequestResult DescribeKey(string content)
         {
             var requestObject = JsonSerializer.Deserialize<DescribeKeyRequest>(content);
-            if (!(requestObject?.KeyId is { } keyId))
+            if (requestObject?.KeyId is not { } keyId)
             {
                 return new InvalidKmsRequest("Missing KeyId for DescribeKey.");
             }
@@ -40,12 +40,12 @@ namespace AwsKmsPkcs11.Service
         private ProcessRequestResult Encrypt(string content)
         {
             var requestObject = JsonSerializer.Deserialize<EncryptKeyRequest>(content);
-            if (!(requestObject?.KeyId is { } keyId))
+            if (requestObject?.KeyId is not { } keyId)
             {
                 return new InvalidKmsRequest("Missing KeyId for EncryptKey.");
             }
 
-            if (!(requestObject.Plaintext is { } plaintext))
+            if (requestObject.Plaintext is not { } plaintext)
             {
                 return new InvalidKmsRequest("Missing Plaintext for EncryptKey.");
             }
@@ -73,7 +73,7 @@ namespace AwsKmsPkcs11.Service
         private ProcessRequestResult Decrypt(string content)
         {
             var requestObject = JsonSerializer.Deserialize<DecryptKeyRequest>(content);
-            if (!(requestObject?.CiphertextBlob is { } blob))
+            if (requestObject?.CiphertextBlob is not { } blob)
             {
                 return new InvalidKmsRequest("Missing CiphertextBlob for DecryptKey.");
             }

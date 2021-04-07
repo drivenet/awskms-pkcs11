@@ -31,7 +31,7 @@ namespace AwsKmsPkcs11.Service
             }
 
             var headers = request.Headers;
-            if (!(headers["X-Amz-Date"] is { Count: 1 } requestDateHeader))
+            if (headers["X-Amz-Date"] is not { Count: 1 } requestDateHeader)
             {
                 return new InvalidRequest(StatusCodes.Status400BadRequest, "Missing X-Amz-Date header.");
             }
@@ -41,17 +41,17 @@ namespace AwsKmsPkcs11.Service
                 return new InvalidRequest(StatusCodes.Status400BadRequest, "The X-Amz-Date header value \"{Value}\" is invalid.", requestDateHeader[0]);
             }
 
-            if (!(headers["X-Amz-Target"] is { Count: 1 } targetHeader))
+            if (headers["X-Amz-Target"] is not { Count: 1 } targetHeader)
             {
                 return new InvalidRequest(StatusCodes.Status400BadRequest, "Missing X-Amz-Target header.");
             }
 
-            if (!(headers[HeaderNames.Authorization] is { Count: 1 } authorizationHeader))
+            if (headers[HeaderNames.Authorization] is not { Count: 1 } authorizationHeader)
             {
                 return new InvalidRequest(StatusCodes.Status401Unauthorized, "Missing Authorization header.");
             }
 
-            if (!(SignatureParser.Match(authorizationHeader[0]) is { Success: true } match))
+            if (SignatureParser.Match(authorizationHeader[0]) is not { Success: true } match)
             {
                 return new InvalidRequest(StatusCodes.Status401Unauthorized, "The Authorization header value \"{Value}\" is invalid.", authorizationHeader[0]);
             }

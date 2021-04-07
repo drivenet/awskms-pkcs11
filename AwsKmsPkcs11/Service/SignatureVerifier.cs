@@ -21,7 +21,7 @@ namespace AwsKmsPkcs11.Service
         public bool IsSignatureValid(SignedRequest request)
         {
             var options = _options.CurrentValue;
-            if (!(options.Credentials is { } credentials))
+            if (options.Credentials is not { } credentials)
             {
                 return false;
             }
