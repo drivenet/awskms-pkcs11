@@ -12,17 +12,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x64 = Debug|x64
-		Integration|x64 = Integration|x64
-		Release|x64 = Release|x64
+		Debug|Any CPU = Debug|Any CPU
+		Integration|Any CPU = Integration|Any CPU
+		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Debug|x64.ActiveCfg = Debug|x64
-		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Debug|x64.Build.0 = Debug|x64
-		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Integration|x64.ActiveCfg = Integration|x64
-		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Integration|x64.Build.0 = Integration|x64
-		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Release|x64.ActiveCfg = Release|x64
-		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Release|x64.Build.0 = Release|x64
+		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Integration|Any CPU.ActiveCfg = Integration|Any CPU
+		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Integration|Any CPU.Build.0 = Integration|Any CPU
+		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDABEDF9-D03D-4D96-85A7-FA63B770C384}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
