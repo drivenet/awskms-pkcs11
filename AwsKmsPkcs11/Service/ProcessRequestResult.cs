@@ -1,6 +1,5 @@
-﻿namespace AwsKmsPkcs11.Service
+﻿namespace AwsKmsPkcs11.Service;
+
+public abstract class ProcessRequestResult
 {
-    public abstract class ProcessRequestResult
-    {
-    }
 }

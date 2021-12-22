@@ -1,13 +1,12 @@
 ﻿using System.Collections.Generic;
 
-namespace AwsKmsPkcs11.Service
+namespace AwsKmsPkcs11.Service;
+
+public interface ITokenManager
 {
-    public interface ITokenManager
-    {
-        bool AreAllKeysValid(IEnumerable<KeyDescription> keys);
+    bool AreAllKeysValid(IEnumerable<KeyDescription> keys);
 
-        byte[]? Encrypt(KeyDescription key, byte[] plaintext);
+    byte[]? Encrypt(KeyDescription key, byte[] plaintext);
 
-        byte[]? TryDecrypt(KeyDescription key, byte[] ciphertext);
-    }
+    byte[]? TryDecrypt(KeyDescription key, byte[] ciphertext);
 }

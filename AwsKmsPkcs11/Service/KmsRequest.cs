@@ -1,17 +1,16 @@
 ﻿using System;
 
-namespace AwsKmsPkcs11.Service
+namespace AwsKmsPkcs11.Service;
+
+public sealed class KmsRequest
 {
-    public sealed class KmsRequest
+    public KmsRequest(string target, string content)
     {
-        public KmsRequest(string target, string content)
-        {
-            Target = target ?? throw new ArgumentNullException(nameof(target));
-            Content = content ?? throw new ArgumentNullException(nameof(content));
-        }
-
-        public string Target { get; }
-
-        public string Content { get; }
+        Target = target ?? throw new ArgumentNullException(nameof(target));
+        Content = content ?? throw new ArgumentNullException(nameof(content));
     }
+
+    public string Target { get; }
+
+    public string Content { get; }
 }

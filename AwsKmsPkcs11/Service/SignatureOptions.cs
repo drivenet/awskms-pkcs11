@@ -3,62 +3,61 @@
 using Amazon;
 using Amazon.Runtime;
 
-namespace AwsKmsPkcs11.Service
+namespace AwsKmsPkcs11.Service;
+
+public sealed class SignatureOptions
 {
-    public sealed class SignatureOptions
+    private string? _accessKey;
+    private string? _secretKey;
+    private string? _region;
+
+    private ImmutableCredentials? _credentials;
+
+    public string? AccessKey
     {
-        private string? _accessKey;
-        private string? _secretKey;
-        private string? _region;
-
-        private ImmutableCredentials? _credentials;
-
-        public string? AccessKey
+        get => _accessKey;
+        set
         {
-            get => _accessKey;
-            set
-            {
-                _accessKey = value;
-                Interlocked.Exchange(ref _credentials, null);
-            }
+            _accessKey = value;
+            Interlocked.Exchange(ref _credentials, null);
         }
+    }
 
-        public string? SecretKey
+    public string? SecretKey
+    {
+        get => _secretKey;
+        set
         {
-            get => _secretKey;
-            set
-            {
-                _secretKey = value;
-                Interlocked.Exchange(ref _credentials, null);
-            }
+            _secretKey = value;
+            Interlocked.Exchange(ref _credentials, null);
         }
+    }
 
-        public string Region
+    public string Region
+    {
+        get => _region ?? RegionEndpoint.USEast1.SystemName;
+        set
         {
-            get => _region ?? RegionEndpoint.USEast1.SystemName;
-            set
+            var region = value?.Trim();
+            if (region?.Length == 0)
             {
-                var region = value?.Trim();
-                if (region?.Length == 0)
-                {
-                    region = null;
-                }
-
-                _region = region;
-            }
-        }
-
-        internal ImmutableCredentials? Credentials => _credentials ??= CreateCredentials();
-
-        private ImmutableCredentials? CreateCredentials()
-        {
-            if (_accessKey is { } accessKey
-                && _secretKey is { } secretKey)
-            {
-                return new ImmutableCredentials(accessKey, secretKey, null);
+                region = null;
             }
 
-            return null;
+            _region = region;
         }
+    }
+
+    internal ImmutableCredentials? Credentials => _credentials ??= CreateCredentials();
+
+    private ImmutableCredentials? CreateCredentials()
+    {
+        if (_accessKey is { } accessKey
+            && _secretKey is { } secretKey)
+        {
+            return new ImmutableCredentials(accessKey, secretKey, null);
+        }
+
+        return null;
     }
 }

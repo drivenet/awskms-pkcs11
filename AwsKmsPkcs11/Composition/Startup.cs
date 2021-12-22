@@ -7,56 +7,55 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AwsKmsPkcs11.Composition
+namespace AwsKmsPkcs11.Composition;
+
+internal sealed class Startup
 {
-    internal sealed class Startup
+    private readonly IConfiguration _configuration;
+
+    public Startup(IConfiguration configuration)
     {
-        private readonly IConfiguration _configuration;
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+    }
 
-        public Startup(IConfiguration configuration)
-        {
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        }
-
-        public void ConfigureServices(IServiceCollection services)
-        {
-            ConfigureApplication(services);
-            ConfigureAspNet(services);
-        }
+    public void ConfigureServices(IServiceCollection services)
+    {
+        ConfigureApplication(services);
+        ConfigureAspNet(services);
+    }
 
 #pragma warning disable CA1822 // Mark members as static -- future-proofing
-        public void Configure(IApplicationBuilder app)
+    public void Configure(IApplicationBuilder app)
 #pragma warning restore CA1822 // Mark members as static
+    {
+        app.UseRouting();
+
+        app.UseEndpoints(routes =>
         {
-            app.UseRouting();
+            routes.MapGet("/version", VersionHandler.Invoke);
+            routes.MapHealthChecks("/healthcheck");
+            routes.MapPost("/keys", app.ApplicationServices.GetRequiredService<KeysHandler>().Invoke);
+        });
+    }
 
-            app.UseEndpoints(routes =>
-            {
-                routes.MapGet("/version", VersionHandler.Invoke);
-                routes.MapHealthChecks("/healthcheck");
-                routes.MapPost("/keys", app.ApplicationServices.GetRequiredService<KeysHandler>().Invoke);
-            });
-        }
+    private static void ConfigureAspNet(IServiceCollection services)
+    {
+        services.AddRouting();
+        services.AddHealthChecks()
+            .AddCheck<SignatureHealthcheck>("signature")
+            .AddCheck<KeysHealthCheck>("keys");
+    }
 
-        private static void ConfigureAspNet(IServiceCollection services)
-        {
-            services.AddRouting();
-            services.AddHealthChecks()
-                .AddCheck<SignatureHealthcheck>("signature")
-                .AddCheck<KeysHealthCheck>("keys");
-        }
+    private void ConfigureApplication(IServiceCollection services)
+    {
+        services.Configure<SignatureOptions>(_configuration);
+        services.Configure<KeyOptions>(_configuration);
 
-        private void ConfigureApplication(IServiceCollection services)
-        {
-            services.Configure<SignatureOptions>(_configuration);
-            services.Configure<KeyOptions>(_configuration);
-
-            services.AddSingleton<KeysHandler>();
-            services.AddSingleton<RequestParser>();
-            services.AddSingleton<SignatureVerifier>();
-            services.AddSingleton<RequestProcessor>();
-            services.AddSingleton<KeyManager>();
-            services.AddSingleton<ITokenManager, LibraryTokenManager>();
-        }
+        services.AddSingleton<KeysHandler>();
+        services.AddSingleton<RequestParser>();
+        services.AddSingleton<SignatureVerifier>();
+        services.AddSingleton<RequestProcessor>();
+        services.AddSingleton<KeyManager>();
+        services.AddSingleton<ITokenManager, LibraryTokenManager>();
     }
 }

@@ -1,30 +1,29 @@
 ﻿using System;
 
-namespace AwsKmsPkcs11.Service
+namespace AwsKmsPkcs11.Service;
+
+public sealed class KeyDescription
 {
-    public sealed class KeyDescription
+    public KeyDescription(string tokenSerialNumber, string tokenPin, byte keyId)
     {
-        public KeyDescription(string tokenSerialNumber, string tokenPin, byte keyId)
+        if (string.IsNullOrEmpty(tokenSerialNumber))
         {
-            if (string.IsNullOrEmpty(tokenSerialNumber))
-            {
-                throw new ArgumentException("Token serial number cannot be null or empty.", nameof(tokenSerialNumber));
-            }
-
-            if (string.IsNullOrEmpty(tokenPin))
-            {
-                throw new ArgumentException("Token PIN cannot be null or empty.", nameof(tokenPin));
-            }
-
-            TokenSerialNumber = tokenSerialNumber;
-            TokenPin = tokenPin;
-            KeyId = keyId;
+            throw new ArgumentException("Token serial number cannot be null or empty.", nameof(tokenSerialNumber));
         }
 
-        public string TokenSerialNumber { get; }
+        if (string.IsNullOrEmpty(tokenPin))
+        {
+            throw new ArgumentException("Token PIN cannot be null or empty.", nameof(tokenPin));
+        }
 
-        public string TokenPin { get; }
-
-        public byte KeyId { get; }
+        TokenSerialNumber = tokenSerialNumber;
+        TokenPin = tokenPin;
+        KeyId = keyId;
     }
+
+    public string TokenSerialNumber { get; }
+
+    public string TokenPin { get; }
+
+    public byte KeyId { get; }
 }

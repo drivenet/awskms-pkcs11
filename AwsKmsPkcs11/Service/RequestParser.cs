@@ -12,57 +12,56 @@ using Microsoft.Net.Http.Headers;
 
 using static System.FormattableString;
 
-namespace AwsKmsPkcs11.Service
-{
-    public sealed class RequestParser
-    {
-        private const string JsonContentType = "application/x-amz-json-1.1";
+namespace AwsKmsPkcs11.Service;
 
-        private static readonly Regex SignatureParser = new Regex(Invariant($"^{Regex.Escape(AWS4Signer.AWS4AlgorithmTag)} {Regex.Escape(AWS4Signer.Credential)}=.+?/.+?, {Regex.Escape(AWS4Signer.SignedHeaders)}=(.+?), {Regex.Escape(AWS4Signer.Signature)}=(.+)$"), RegexOptions.Compiled | RegexOptions.CultureInvariant);
+public sealed class RequestParser
+{
+    private const string JsonContentType = "application/x-amz-json-1.1";
+
+    private static readonly Regex SignatureParser = new(Invariant($"^{Regex.Escape(AWS4Signer.AWS4AlgorithmTag)} {Regex.Escape(AWS4Signer.Credential)}=.+?/.+?, {Regex.Escape(AWS4Signer.SignedHeaders)}=(.+?), {Regex.Escape(AWS4Signer.Signature)}=(.+)$"), RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
 #pragma warning disable CA1822 // Mark members as static -- future-proofing
-        public async Task<ParseRequestResult> ParseRequest(HttpRequest request)
+    public async Task<ParseRequestResult> ParseRequest(HttpRequest request)
 #pragma warning restore CA1822 // Mark members as static
+    {
+        var requestEncoding = Encoding.UTF8;
+        if (request.ContentType != JsonContentType)
         {
-            var requestEncoding = Encoding.UTF8;
-            if (request.ContentType != JsonContentType)
-            {
-                return new InvalidRequest(StatusCodes.Status415UnsupportedMediaType, "Unsupported media type.");
-            }
-
-            var headers = request.Headers;
-            if (headers["X-Amz-Date"] is not { Count: 1 } requestDateHeader)
-            {
-                return new InvalidRequest(StatusCodes.Status400BadRequest, "Missing X-Amz-Date header.");
-            }
-
-            if (!DateTime.TryParseExact(requestDateHeader[0], "yyyyMMddTHHmmssZ", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var signedAt))
-            {
-                return new InvalidRequest(StatusCodes.Status400BadRequest, "The X-Amz-Date header value \"{Value}\" is invalid.", requestDateHeader[0]);
-            }
-
-            if (headers["X-Amz-Target"] is not { Count: 1 } targetHeader)
-            {
-                return new InvalidRequest(StatusCodes.Status400BadRequest, "Missing X-Amz-Target header.");
-            }
-
-            if (headers[HeaderNames.Authorization] is not { Count: 1 } authorizationHeader)
-            {
-                return new InvalidRequest(StatusCodes.Status401Unauthorized, "Missing Authorization header.");
-            }
-
-            if (SignatureParser.Match(authorizationHeader[0]) is not { Success: true } match)
-            {
-                return new InvalidRequest(StatusCodes.Status401Unauthorized, "The Authorization header value \"{Value}\" is invalid.", authorizationHeader[0]);
-            }
-
-            string content;
-            using (var reader = new StreamReader(request.Body, encoding: requestEncoding, detectEncodingFromByteOrderMarks: false, bufferSize: 256, leaveOpen: true))
-            {
-                content = await reader.ReadToEndAsync();
-            }
-
-            return new SignedRequest(request.Path, headers, match.Groups[1].Value, signedAt, match.Groups[2].Value, new KmsRequest(targetHeader[0], content));
+            return new InvalidRequest(StatusCodes.Status415UnsupportedMediaType, "Unsupported media type.");
         }
+
+        var headers = request.Headers;
+        if (headers["X-Amz-Date"] is not { Count: 1 } requestDateHeader)
+        {
+            return new InvalidRequest(StatusCodes.Status400BadRequest, "Missing X-Amz-Date header.");
+        }
+
+        if (!DateTime.TryParseExact(requestDateHeader[0], "yyyyMMddTHHmmssZ", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var signedAt))
+        {
+            return new InvalidRequest(StatusCodes.Status400BadRequest, "The X-Amz-Date header value \"{Value}\" is invalid.", requestDateHeader[0]);
+        }
+
+        if (headers["X-Amz-Target"] is not { Count: 1 } targetHeader)
+        {
+            return new InvalidRequest(StatusCodes.Status400BadRequest, "Missing X-Amz-Target header.");
+        }
+
+        if (headers[HeaderNames.Authorization] is not { Count: 1 } authorizationHeader)
+        {
+            return new InvalidRequest(StatusCodes.Status401Unauthorized, "Missing Authorization header.");
+        }
+
+        if (SignatureParser.Match(authorizationHeader[0]) is not { Success: true } match)
+        {
+            return new InvalidRequest(StatusCodes.Status401Unauthorized, "The Authorization header value \"{Value}\" is invalid.", authorizationHeader[0]);
+        }
+
+        string content;
+        using (var reader = new StreamReader(request.Body, encoding: requestEncoding, detectEncodingFromByteOrderMarks: false, bufferSize: 256, leaveOpen: true))
+        {
+            content = await reader.ReadToEndAsync();
+        }
+
+        return new SignedRequest(request.Path, headers, match.Groups[1].Value, signedAt, match.Groups[2].Value, new KmsRequest(targetHeader[0], content));
     }
 }

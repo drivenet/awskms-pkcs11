@@ -6,25 +6,24 @@ using AwsKmsPkcs11.Service;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace AwsKmsPkcs11.Http
+namespace AwsKmsPkcs11.Http;
+
+internal sealed class KeysHealthCheck : IHealthCheck
 {
-    internal sealed class KeysHealthCheck : IHealthCheck
+    private readonly KeyManager _keyManager;
+
+    public KeysHealthCheck(KeyManager keyManager)
     {
-        private readonly KeyManager _keyManager;
+        _keyManager = keyManager ?? throw new ArgumentNullException(nameof(keyManager));
+    }
 
-        public KeysHealthCheck(KeyManager keyManager)
+    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken)
+    {
+        if (!_keyManager.AreAllKeysValid())
         {
-            _keyManager = keyManager ?? throw new ArgumentNullException(nameof(keyManager));
+            return Task.FromResult(HealthCheckResult.Unhealthy("KMS keys are missing or invalid."));
         }
 
-        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken)
-        {
-            if (!_keyManager.AreAllKeysValid())
-            {
-                return Task.FromResult(HealthCheckResult.Unhealthy("KMS keys are missing or invalid."));
-            }
-
-            return Task.FromResult(HealthCheckResult.Healthy("KMS keys are valid."));
-        }
+        return Task.FromResult(HealthCheckResult.Healthy("KMS keys are valid."));
     }
 }

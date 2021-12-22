@@ -8,100 +8,99 @@ using Microsoft.Extensions.Logging;
 
 using static System.FormattableString;
 
-namespace AwsKmsPkcs11.Http
+namespace AwsKmsPkcs11.Http;
+
+internal sealed class KeysHandler
 {
-    internal sealed class KeysHandler
+    private const string JsonContentType = "application/x-amz-json-1.1";
+
+    private readonly ILogger _logger;
+    private readonly RequestParser _requestParser;
+    private readonly SignatureVerifier _signatureVerifier;
+    private readonly RequestProcessor _requestProcessor;
+
+    public KeysHandler(ILogger<KeysHandler> logger, RequestParser requestParser, SignatureVerifier signatureVerifier, RequestProcessor requestProcessor)
     {
-        private const string JsonContentType = "application/x-amz-json-1.1";
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _requestParser = requestParser ?? throw new ArgumentNullException(nameof(requestParser));
+        _signatureVerifier = signatureVerifier ?? throw new ArgumentNullException(nameof(signatureVerifier));
+        _requestProcessor = requestProcessor ?? throw new ArgumentNullException(nameof(requestProcessor));
+    }
 
-        private readonly ILogger _logger;
-        private readonly RequestParser _requestParser;
-        private readonly SignatureVerifier _signatureVerifier;
-        private readonly RequestProcessor _requestProcessor;
+    public async Task Invoke(HttpContext httpContext)
+    {
+        using var scope = _logger.BeginScope("RemoteHost:{RemoteHost} RemotePort:{RemotePort}", httpContext.Connection.RemoteIpAddress, httpContext.Connection.RemotePort);
+        await HandleRequest(httpContext.Request, httpContext.Response);
+    }
 
-        public KeysHandler(ILogger<KeysHandler> logger, RequestParser requestParser, SignatureVerifier signatureVerifier, RequestProcessor requestProcessor)
+    private async Task HandleRequest(HttpRequest request, HttpResponse response)
+    {
+        var result = await _requestParser.ParseRequest(request);
+        switch (result)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _requestParser = requestParser ?? throw new ArgumentNullException(nameof(requestParser));
-            _signatureVerifier = signatureVerifier ?? throw new ArgumentNullException(nameof(signatureVerifier));
-            _requestProcessor = requestProcessor ?? throw new ArgumentNullException(nameof(requestProcessor));
-        }
+            case SignedRequest signedRequest:
+                await HandleKmsRequest(signedRequest, response);
+                break;
 
-        public async Task Invoke(HttpContext httpContext)
-        {
-            using var scope = _logger.BeginScope("RemoteHost:{RemoteHost} RemotePort:{RemotePort}", httpContext.Connection.RemoteIpAddress, httpContext.Connection.RemotePort);
-            await HandleRequest(httpContext.Request, httpContext.Response);
-        }
-
-        private async Task HandleRequest(HttpRequest request, HttpResponse response)
-        {
-            var result = await _requestParser.ParseRequest(request);
-            switch (result)
-            {
-                case SignedRequest signedRequest:
-                    await HandleKmsRequest(signedRequest, response);
-                    break;
-
-                case InvalidRequest invalidRequest:
-                    response.StatusCode = invalidRequest.StatusCode;
-                    response.ContentType = JsonContentType;
-                    await response.WriteAsync("{\"Message\": \"Invalid request.\"}");
-#pragma warning disable CA2254 // Template should be a static expression -- this is a template
-                    _logger.LogError(EventIds.InvalidRequest, invalidRequest.Message, invalidRequest.Args);
-#pragma warning restore CA2254 // Template should be a static expression
-                    break;
-
-                default:
-                    throw new InvalidOperationException(Invariant($"Unexpected parse result {result}."));
-            }
-        }
-
-        private async Task HandleKmsRequest(SignedRequest request, HttpResponse response)
-        {
-            if (!_signatureVerifier.IsSignatureValid(request))
-            {
-                response.StatusCode = StatusCodes.Status401Unauthorized;
+            case InvalidRequest invalidRequest:
+                response.StatusCode = invalidRequest.StatusCode;
                 response.ContentType = JsonContentType;
-                await response.WriteAsync("{\"Message\": \"Invalid signature.\"}");
-                _logger.LogError(EventIds.InvalidRequest, "Computed request signature does not match provided \"{Signature}\".", request.Signature);
-                return;
-            }
-
-            var result = _requestProcessor.ProcessRequest(request.Request);
-            switch (result)
-            {
-                case KmsResponse kmsResponse:
-                    await response.WriteAsync(kmsResponse.Content);
-                    break;
-
-                case InvalidKmsRequest invalidRequest:
-                    response.StatusCode = StatusCodes.Status400BadRequest;
-                    response.ContentType = JsonContentType;
-                    await response.WriteAsync("{\"Message\": \"Invalid KMS request.\"}");
+                await response.WriteAsync("{\"Message\": \"Invalid request.\"}");
 #pragma warning disable CA2254 // Template should be a static expression -- this is a template
-                    _logger.LogError(EventIds.InvalidKmsRequest, invalidRequest.Message, invalidRequest.Args);
+                _logger.LogError(EventIds.InvalidRequest, invalidRequest.Message, invalidRequest.Args);
 #pragma warning restore CA2254 // Template should be a static expression
-                    break;
+                break;
 
-                case KmsFailure kmsFailure:
-                    response.StatusCode = StatusCodes.Status500InternalServerError;
-                    response.ContentType = JsonContentType;
-                    await response.WriteAsync("{\"Message\": \"KMS failure.\"}");
-#pragma warning disable CA2254 // Template should be a static expression -- this is a template
-                    _logger.LogError(EventIds.InvalidKmsRequest, kmsFailure.Message, kmsFailure.Args);
-#pragma warning restore CA2254 // Template should be a static expression
-                    break;
-
-                default:
-                    throw new InvalidOperationException(Invariant($"Unexpected KMS result {result}."));
-            }
+            default:
+                throw new InvalidOperationException(Invariant($"Unexpected parse result {result}."));
         }
+    }
 
-        private static class EventIds
+    private async Task HandleKmsRequest(SignedRequest request, HttpResponse response)
+    {
+        if (!_signatureVerifier.IsSignatureValid(request))
         {
-            public static readonly EventId InvalidRequest = new EventId(1, nameof(InvalidRequest));
-            public static readonly EventId InvalidKmsRequest = new EventId(2, nameof(InvalidKmsRequest));
-            public static readonly EventId KmsFailure = new EventId(3, nameof(KmsFailure));
+            response.StatusCode = StatusCodes.Status401Unauthorized;
+            response.ContentType = JsonContentType;
+            await response.WriteAsync("{\"Message\": \"Invalid signature.\"}");
+            _logger.LogError(EventIds.InvalidRequest, "Computed request signature does not match provided \"{Signature}\".", request.Signature);
+            return;
         }
+
+        var result = _requestProcessor.ProcessRequest(request.Request);
+        switch (result)
+        {
+            case KmsResponse kmsResponse:
+                await response.WriteAsync(kmsResponse.Content);
+                break;
+
+            case InvalidKmsRequest invalidRequest:
+                response.StatusCode = StatusCodes.Status400BadRequest;
+                response.ContentType = JsonContentType;
+                await response.WriteAsync("{\"Message\": \"Invalid KMS request.\"}");
+#pragma warning disable CA2254 // Template should be a static expression -- this is a template
+                _logger.LogError(EventIds.InvalidKmsRequest, invalidRequest.Message, invalidRequest.Args);
+#pragma warning restore CA2254 // Template should be a static expression
+                break;
+
+            case KmsFailure kmsFailure:
+                response.StatusCode = StatusCodes.Status500InternalServerError;
+                response.ContentType = JsonContentType;
+                await response.WriteAsync("{\"Message\": \"KMS failure.\"}");
+#pragma warning disable CA2254 // Template should be a static expression -- this is a template
+                _logger.LogError(EventIds.InvalidKmsRequest, kmsFailure.Message, kmsFailure.Args);
+#pragma warning restore CA2254 // Template should be a static expression
+                break;
+
+            default:
+                throw new InvalidOperationException(Invariant($"Unexpected KMS result {result}."));
+        }
+    }
+
+    private static class EventIds
+    {
+        public static readonly EventId InvalidRequest = new(1, nameof(InvalidRequest));
+        public static readonly EventId InvalidKmsRequest = new(2, nameof(InvalidKmsRequest));
+        public static readonly EventId KmsFailure = new(3, nameof(KmsFailure));
     }
 }
