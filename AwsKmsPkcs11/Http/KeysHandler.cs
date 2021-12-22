@@ -46,7 +46,9 @@ namespace AwsKmsPkcs11.Http
                     response.StatusCode = invalidRequest.StatusCode;
                     response.ContentType = JsonContentType;
                     await response.WriteAsync("{\"Message\": \"Invalid request.\"}");
+#pragma warning disable CA2254 // Template should be a static expression -- this is a template
                     _logger.LogError(EventIds.InvalidRequest, invalidRequest.Message, invalidRequest.Args);
+#pragma warning restore CA2254 // Template should be a static expression
                     break;
 
                 default:
@@ -76,14 +78,18 @@ namespace AwsKmsPkcs11.Http
                     response.StatusCode = StatusCodes.Status400BadRequest;
                     response.ContentType = JsonContentType;
                     await response.WriteAsync("{\"Message\": \"Invalid KMS request.\"}");
+#pragma warning disable CA2254 // Template should be a static expression -- this is a template
                     _logger.LogError(EventIds.InvalidKmsRequest, invalidRequest.Message, invalidRequest.Args);
+#pragma warning restore CA2254 // Template should be a static expression
                     break;
 
                 case KmsFailure kmsFailure:
                     response.StatusCode = StatusCodes.Status500InternalServerError;
                     response.ContentType = JsonContentType;
                     await response.WriteAsync("{\"Message\": \"KMS failure.\"}");
+#pragma warning disable CA2254 // Template should be a static expression -- this is a template
                     _logger.LogError(EventIds.InvalidKmsRequest, kmsFailure.Message, kmsFailure.Args);
+#pragma warning restore CA2254 // Template should be a static expression
                     break;
 
                 default:
