@@ -262,6 +262,10 @@ dotnet_diagnostic.IDE0067.severity = none
 dotnet_diagnostic.IDE0068.severity = none
 dotnet_diagnostic.IDE0069.severity = none
 
+# Correctness IDE rules
+dotnet_diagnostic.IDE0010.severity = suggestion
+dotnet_diagnostic.IDE0072.severity = suggestion
+
 # Style IDE rules
 dotnet_diagnostic.IDE0005.severity = warning
 dotnet_diagnostic.IDE0018.severity = suggestion
