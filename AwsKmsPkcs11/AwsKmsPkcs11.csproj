@@ -18,9 +18,10 @@
     <PackageReference Include="Pkcs11Interop" Version="5.1.2" />
   </ItemGroup>
 
+  
   <ItemGroup>
-    <None Update="appsettings.json">
+    <Content Update="appsettings.json">
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
-    </None>
+    </Content>
   </ItemGroup>
 </Project>
