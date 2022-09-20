@@ -6,7 +6,7 @@
     <OutputType>Exe</OutputType>
     <Nullable>enable</Nullable>
     <AssemblyName>awskms-pkcs11</AssemblyName>
-    <Version>0.5.3</Version>
+    <Version>0.5.4</Version>
     <NoWarn>$(NoWarn);CA2007;CA1848</NoWarn>
     <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
@@ -14,7 +14,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="6.0.0" />
     <PackageReference Include="Tmds.Systemd.Logging" Version="0.8.0" />
-    <PackageReference Include="AWSSDK.Core" Version="3.7.12.8" />
+    <PackageReference Include="AWSSDK.Core" Version="3.7.13.5" />
     <PackageReference Include="Pkcs11Interop" Version="5.1.2" />
   </ItemGroup>
   
