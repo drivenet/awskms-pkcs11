@@ -113,6 +113,8 @@ package-lock.json text -diff
 
 *.exe binary
 *.dll binary
+*.pdb binary
+*.so binary
 *.pyc binary
 
 *.bmp binary
