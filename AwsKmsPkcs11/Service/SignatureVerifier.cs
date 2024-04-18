@@ -50,6 +50,11 @@ public sealed class SignatureVerifier
             var isFirst = true;
             foreach (var value in headerValue)
             {
+                if (value is null)
+                {
+                    continue;
+                }
+
                 if (isFirst)
                 {
                     isFirst = false;

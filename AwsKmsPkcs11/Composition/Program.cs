@@ -23,7 +23,7 @@ public static class Program
         => new HostBuilder()
             .ConfigureHostConfiguration(configBuilder => configBuilder.AddCommandLine(args))
             .ConfigureWebHost(webHost => ConfigureWebHost(webHost))
-            .ConfigureLogging((builderContext, loggingBuilder) => ConfigureLogging(builderContext, loggingBuilder))
+            .ConfigureLogging(ConfigureLogging)
 #if !MINIMAL_BUILD
                 .UseSystemd()
 #endif
@@ -32,7 +32,7 @@ public static class Program
 
     private static IWebHostBuilder ConfigureWebHost(IWebHostBuilder webHost)
         => webHost
-            .UseKestrel((builderContext, options) => ConfigureKestrel(builderContext, options))
+            .UseKestrel(ConfigureKestrel)
             .UseStartup<Startup>();
 
 #if MINIMAL_BUILD
@@ -45,7 +45,7 @@ public static class Program
     {
         loggingBuilder.AddFilter(
             (category, level) => level >= LogLevel.Warning
-                || (level >= LogLevel.Information && !category.StartsWith("Microsoft.AspNetCore.", StringComparison.OrdinalIgnoreCase)));
+                || (level >= LogLevel.Information && category?.StartsWith("Microsoft.AspNetCore.", StringComparison.OrdinalIgnoreCase) != true));
 
 #if !MINIMAL_BUILD
         if (Journal.IsSupported)
@@ -100,6 +100,6 @@ public static class Program
 
     private static IConfigurationBuilder ConfigureAppConfiguration(string[] args, HostBuilderContext builderContext, IConfigurationBuilder configBuilder)
         => configBuilder
-            .AddJsonFile(builderContext.Configuration.GetValue("ConfigPath", "appsettings.json"), optional: false, reloadOnChange: true)
+            .AddJsonFile(builderContext.Configuration.GetValue<string>("ConfigPath") ?? "appsettings.json", optional: false, reloadOnChange: true)
             .AddCommandLine(args);
 }
