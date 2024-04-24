@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>awskms-pkcs11</AssemblyName>
     <Version>1.1.1</Version>
-    <NoWarn>$(NoWarn);CA2007;CA1848</NoWarn>
+    <NoWarn>$(NoWarn);CA1848</NoWarn>
     <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
   
