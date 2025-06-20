@@ -49,6 +49,11 @@
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <PropertyGroup Label="ExeOutputSettings" Condition="'$(OutputType)' == 'Exe'">
+    <PublishDocumentationFiles>false</PublishDocumentationFiles>
+    <PublishReferencesDocumentationFiles>false</PublishReferencesDocumentationFiles>
+  </PropertyGroup>
+
   <ItemGroup Label="MinimalAnalyzerFiles">
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)\stylecop.json">
       <Link>stylecop.json</Link>
