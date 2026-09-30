@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -22,8 +22,7 @@ public sealed class TokenManager : ITokenManager
 
     public byte[]? Encrypt(KeyDescription key, byte[] plaintext)
     {
-        var slot = SelectSlot(key.TokenSerialNumber);
-        if (slot is null)
+        if (SelectSlot(key.TokenSerialNumber) is not { } slot)
         {
             return null;
         }
@@ -33,8 +32,7 @@ public sealed class TokenManager : ITokenManager
 
     public byte[]? TryDecrypt(KeyDescription key, byte[] ciphertext)
     {
-        var slot = SelectSlot(key.TokenSerialNumber);
-        if (slot is null)
+        if (SelectSlot(key.TokenSerialNumber) is not { } slot)
         {
             return null;
         }
@@ -46,8 +44,7 @@ public sealed class TokenManager : ITokenManager
     {
         foreach (var group in keys.GroupBy(k => (k.TokenSerialNumber, k.TokenPin), k => k.KeyId))
         {
-            var slot = SelectSlot(group.Key.TokenSerialNumber);
-            if (slot is null)
+            if (SelectSlot(group.Key.TokenSerialNumber) is not { } slot)
             {
                 return false;
             }
@@ -61,7 +58,7 @@ public sealed class TokenManager : ITokenManager
         return true;
     }
 
-    private IObjectHandle? QueryPublicKey(byte keyId, ISession session, ISlot slot)
+    private IObjectHandle? QueryPublicKey(byte keyId, ISession session, SlotInfo slot)
     {
         List<IObjectAttribute> query;
         var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
@@ -73,16 +70,16 @@ public sealed class TokenManager : ITokenManager
                 objectAttributeFactory.Create(CKA.CKA_MODULUS_BITS, 2048),
             };
 
-        var key = session.FindAllObjects(query).SingleOrDefault();
+        var key = Execute(() => session.FindAllObjects(query)).SingleOrDefault();
         if (key is null)
         {
-            _logger.LogWarning(EventIds.NoMatchingKey, "No RSA 2048-bit public key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
+            _logger.LogWarning(EventIds.NoMatchingKey, "No RSA 2048-bit public key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.SerialNumber);
         }
 
         return key;
     }
 
-    private IObjectHandle? QueryPrivateKey(byte keyId, ISession session, ISlot slot)
+    private IObjectHandle? QueryPrivateKey(byte keyId, ISession session, SlotInfo slot)
     {
         var objectAttributeFactory = session.Factories.ObjectAttributeFactory;
         var query = new List<IObjectAttribute>
@@ -92,18 +89,18 @@ public sealed class TokenManager : ITokenManager
                 objectAttributeFactory.Create(CKA.CKA_KEY_TYPE, CKK.CKK_RSA),
             };
 
-        var key = session.FindAllObjects(query).SingleOrDefault();
+        var key = Execute(() => session.FindAllObjects(query)).SingleOrDefault();
         if (key is null)
         {
-            _logger.LogError(EventIds.NoMatchingKey, "No RSA private key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.GetTokenInfo().SerialNumber);
+            _logger.LogError(EventIds.NoMatchingKey, "No RSA private key with id {KeyId} on token with serial number \"{SerialNumber}\".", keyId, slot.SerialNumber);
         }
 
         return key;
     }
 
-    private bool AreKeysValid(ISlot slot, IEnumerable<byte> keyIds, string pin)
+    private bool AreKeysValid(SlotInfo slot, IEnumerable<byte> keyIds, string pin)
     {
-        using var session = slot.OpenSession(SessionType.ReadOnly);
+        using var session = Execute(() => slot.Slot.OpenSession(SessionType.ReadOnly));
         if (!Login(session, pin, slot))
         {
             return false;
@@ -129,9 +126,9 @@ public sealed class TokenManager : ITokenManager
         return true;
     }
 
-    private byte[]? Encrypt(byte keyId, ISlot slot, byte[] plaintext)
+    private byte[]? Encrypt(byte keyId, SlotInfo slot, byte[] plaintext)
     {
-        using var session = slot.OpenSession(SessionType.ReadOnly);
+        using var session = Execute(() => slot.Slot.OpenSession(SessionType.ReadOnly));
         var key = QueryPublicKey(keyId, session, slot);
         if (key is null)
         {
@@ -139,13 +136,13 @@ public sealed class TokenManager : ITokenManager
         }
 
         using var mechanism = session.Factories.MechanismFactory.Create(CKM.CKM_RSA_PKCS);
-        _logger.LogInformation(EventIds.Encrypt, "Encrypting with mechanism type {Mechanism} using key with id {KeyId} on token with serial number \"{SerialNumber}\".", mechanism.Type, keyId, slot.GetTokenInfo().SerialNumber);
-        return session.Encrypt(mechanism, key, plaintext);
+        _logger.LogInformation(EventIds.Encrypt, "Encrypting with mechanism type {Mechanism} using key with id {KeyId} on token with serial number \"{SerialNumber}\".", mechanism.Type, keyId, slot.SerialNumber);
+        return Execute(() => session.Encrypt(mechanism, key, plaintext));
     }
 
-    private byte[]? Decrypt(byte keyId, string pin, ISlot slot, byte[] ciphertext)
+    private byte[]? Decrypt(byte keyId, string pin, SlotInfo slot, byte[] ciphertext)
     {
-        using var session = slot.OpenSession(SessionType.ReadOnly);
+        using var session = Execute(() => slot.Slot.OpenSession(SessionType.ReadOnly));
         if (!Login(session, pin, slot))
         {
             return null;
@@ -160,8 +157,8 @@ public sealed class TokenManager : ITokenManager
             }
 
             using var mechanism = session.Factories.MechanismFactory.Create(CKM.CKM_RSA_PKCS);
-            _logger.LogInformation(EventIds.Decrypt, "Decrypting with mechanism type {Mechanism} using key with id {KeyId} on token with serial number \"{SerialNumber}\".", mechanism.Type, keyId, slot.GetTokenInfo().SerialNumber);
-            return session.Decrypt(mechanism, key, ciphertext);
+            _logger.LogInformation(EventIds.Decrypt, "Decrypting with mechanism type {Mechanism} using key with id {KeyId} on token with serial number \"{SerialNumber}\".", mechanism.Type, keyId, slot.SerialNumber);
+            return Execute(() => session.Decrypt(mechanism, key, ciphertext));
         }
         finally
         {
@@ -169,23 +166,26 @@ public sealed class TokenManager : ITokenManager
         }
     }
 
-    private bool Login(ISession session, string pin, ISlot slot)
+    private bool Login(ISession session, string pin, SlotInfo slot)
     {
         try
         {
-            session.Login(CKU.CKU_USER, pin);
-            return true;
+            return Execute(() =>
+            {
+                session.Login(CKU.CKU_USER, pin);
+                return true;
+            });
         }
         catch (Pkcs11Exception exception) when (exception.RV == CKR.CKR_PIN_INCORRECT)
         {
-            _logger.LogError(EventIds.InvalidPin, "Invalid PIN for token with serial number \"{SerialNumber}\".", slot.GetTokenInfo().SerialNumber);
+            _logger.LogError(EventIds.InvalidPin, "Invalid PIN for token with serial number \"{SerialNumber}\".", slot.SerialNumber);
             return false;
         }
     }
 
-    private ISlot? SelectSlot(string serialNumber)
+    private SlotInfo? SelectSlot(string serialNumber)
     {
-        var slots = _library.GetSlotList(SlotsType.WithTokenPresent);
+        var slots = Execute(() => _library.GetSlotList(SlotsType.WithTokenPresent));
         if (slots is null)
         {
             return null;
@@ -196,13 +196,32 @@ public sealed class TokenManager : ITokenManager
             var token = slot.GetTokenInfo();
             if (token.SerialNumber == serialNumber)
             {
-                return slot;
+                return new(slot, serialNumber);
             }
         }
 
         _logger.LogWarning(EventIds.NoMatchingToken, "No token matching serial number \"{SerialNumber}\".", serialNumber);
         return null;
     }
+
+    private T Execute<T>(Func<T> callback)
+    {
+        const int MaxAttempts = 3;
+        var attempt = 0;
+        while (true)
+        {
+            try
+            {
+                return callback();
+            }
+            catch (Pkcs11Exception exception) when (++attempt < MaxAttempts && (exception.RV is CKR.CKR_DEVICE_REMOVED or CKR.CKR_DEVICE_ERROR))
+            {
+                _logger.LogWarning(EventIds.DeviceFailure, exception, "The device failed, retrying (attempt {Attempt}).", attempt);
+            }
+        }
+    }
+
+    private readonly record struct SlotInfo(ISlot Slot, string SerialNumber);
 
     private static class EventIds
     {
@@ -211,5 +230,6 @@ public sealed class TokenManager : ITokenManager
         public static readonly EventId InvalidPin = new(4, nameof(InvalidPin));
         public static readonly EventId Encrypt = new(5, nameof(Encrypt));
         public static readonly EventId Decrypt = new(6, nameof(Decrypt));
+        public static readonly EventId DeviceFailure = new(7, nameof(DeviceFailure));
     }
 }
